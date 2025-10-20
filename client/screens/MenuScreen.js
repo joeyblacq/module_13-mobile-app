@@ -1,12 +1,12 @@
 // client/screens/MenuScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable } from 'react-native';
+import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
 
 // TODO: point to your backend host:port
 const BASE_URL = 'http://localhost:8080';
 
 export default function MenuScreen({ route }) {
-  const { id } = route.params; // restaurant id
+  const { id, name } = route.params; // restaurant id (and optional name for header)
   const [menu, setMenu] = useState(null); // null=loading
   const [error, setError] = useState('');
 
@@ -64,6 +64,11 @@ export default function MenuScreen({ route }) {
     return menu.reduce((sum, it) => sum + (qty[String(it.id)] || 0) * (it.price || 0), 0);
   }, [menu, qty]);
 
+  // Enabled only when at least one quantity > 0
+  const hasAnyItems = useMemo(() => {
+    return Object.values(qty).some((n) => (n || 0) > 0);
+  }, [qty]);
+
   const inc = (itemId) => {
     setQty((prev) => {
       const key = String(itemId);
@@ -78,6 +83,16 @@ export default function MenuScreen({ route }) {
       // Never negative
       return { ...prev, [key]: Math.max(0, current - 1) };
     });
+  };
+
+  const onCreateOrder = () => {
+    // Guard (should be disabled anyway)
+    if (!hasAnyItems) return;
+    // Replace with real order creation / navigation to checkout
+    const items = Object.entries(qty)
+      .filter(([, n]) => (n || 0) > 0)
+      .map(([k, n]) => ({ id: k, qty: n }));
+    Alert.alert('Create Order', `Restaurant: ${name || id}\nItems: ${items.length}\nSubtotal: $${subtotal.toFixed(2)}`);
   };
 
   if (menu === null) {
@@ -101,7 +116,7 @@ export default function MenuScreen({ route }) {
           <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
         </View>
 
-        {/* Quantity controls (no typing — only buttons) */}
+        {/* Quantity controls (buttons only; no typing) */}
         <View style={styles.qtyBox}>
           <Pressable
             style={[styles.qtyBtn, count === 0 && styles.qtyBtnDisabled]}
@@ -113,7 +128,6 @@ export default function MenuScreen({ route }) {
             <Text style={[styles.qtyBtnText, count === 0 && styles.qtyBtnTextDisabled]}>−</Text>
           </Pressable>
 
-          {/* Non-editable count display */}
           <Text style={styles.qtyVal} accessibilityLabel={`Quantity for ${item.name}`}>{count}</Text>
 
           <Pressable
@@ -150,9 +164,23 @@ export default function MenuScreen({ route }) {
         }
       />
 
+      {/* Footer summary + Create Order button */}
       <View style={styles.footer}>
-        <Text style={styles.subtotalLabel}>Subtotal:</Text>
-        <Text style={styles.subtotalValue}>${subtotal.toFixed(2)}</Text>
+        <View style={styles.footerLeft}>
+          <Text style={styles.subtotalLabel}>Subtotal:</Text>
+          <Text style={styles.subtotalValue}>${subtotal.toFixed(2)}</Text>
+        </View>
+
+        <Pressable
+          onPress={onCreateOrder}
+          disabled={!hasAnyItems}
+          style={[styles.cta, !hasAnyItems && styles.ctaDisabled]}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !hasAnyItems }}
+          accessibilityLabel="Create Order"
+        >
+          <Text style={[styles.ctaText, !hasAnyItems && styles.ctaTextDisabled]}>Create Order</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -206,8 +234,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#fff',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
   },
+  footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   subtotalLabel: { fontSize: 16, fontWeight: '700' },
   subtotalValue: { fontSize: 16, fontWeight: '800' },
+
+  cta: {
+    backgroundColor: '#0a65a0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  ctaDisabled: { backgroundColor: '#9bbbd0' },
+  ctaText: { color: '#fff', fontWeight: '800' },
+  ctaTextDisabled: { color: '#f1f5f9' },
 });
