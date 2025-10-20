@@ -11,7 +11,14 @@ export default function MenuScreen({ route }) {
   const [error, setError] = useState('');
 
   // Quantities keyed by menu item id; default 0
-  const [qty, setQty] = useState({}); // e.g., { 'm-1': 2, 'm-2': 0 }
+  const [qty, setQty] = useState({});
+
+  // Reset quantities & state when switching restaurants
+  useEffect(() => {
+    setQty({});
+    setMenu(null);
+    setError('');
+  }, [id]);
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -21,7 +28,7 @@ export default function MenuScreen({ route }) {
         const data = await res.json();
         const items = Array.isArray(data) ? data : [];
 
-        // Normalize ids and prices, then set default quantities to 0
+        // Normalize
         const normalized = items.map((it, idx) => ({
           id: it.id ?? `m-${id}-${idx + 1}`,
           name: it.name ?? `Item ${idx + 1}`,
@@ -30,12 +37,13 @@ export default function MenuScreen({ route }) {
         }));
 
         setMenu(normalized);
-        // default all quantities to 0
+
+        // Default all quantities to 0
         const zeroQty = {};
         normalized.forEach((it) => (zeroQty[String(it.id)] = 0));
         setQty(zeroQty);
       } catch {
-        // Fallback mock data so screen works without API
+        // Fallback mock data
         const mock = [
           { id: `m-${id}-1`, name: 'Margherita Pizza', desc: 'Tomato, mozzarella, basil', price: 12.99 },
           { id: `m-${id}-2`, name: 'Caesar Salad', desc: 'Romaine, parmesan, croutons', price: 8.5 },
@@ -59,8 +67,7 @@ export default function MenuScreen({ route }) {
   const inc = (itemId) => {
     setQty((prev) => {
       const key = String(itemId);
-      const next = { ...prev, [key]: (prev[key] || 0) + 1 };
-      return next;
+      return { ...prev, [key]: (prev[key] || 0) + 1 };
     });
   };
 
@@ -68,10 +75,8 @@ export default function MenuScreen({ route }) {
     setQty((prev) => {
       const key = String(itemId);
       const current = prev[key] || 0;
-      // CANNOT be negative: clamp at 0
-      const nextVal = Math.max(0, current - 1);
-      const next = { ...prev, [key]: nextVal };
-      return next;
+      // Never negative
+      return { ...prev, [key]: Math.max(0, current - 1) };
     });
   };
 
@@ -85,7 +90,7 @@ export default function MenuScreen({ route }) {
   }
 
   const renderItem = ({ item }) => {
-    const count = qty[String(item.id)] ?? 0; // default 0
+    const count = qty[String(item.id)] ?? 0;
     const lineTotal = (count * (item.price || 0)).toFixed(2);
 
     return (
@@ -96,7 +101,7 @@ export default function MenuScreen({ route }) {
           <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
         </View>
 
-        {/* Quantity controls */}
+        {/* Quantity controls (no typing — only buttons) */}
         <View style={styles.qtyBox}>
           <Pressable
             style={[styles.qtyBtn, count === 0 && styles.qtyBtnDisabled]}
@@ -108,7 +113,8 @@ export default function MenuScreen({ route }) {
             <Text style={[styles.qtyBtnText, count === 0 && styles.qtyBtnTextDisabled]}>−</Text>
           </Pressable>
 
-          <Text style={styles.qtyVal}>{count}</Text>
+          {/* Non-editable count display */}
+          <Text style={styles.qtyVal} accessibilityLabel={`Quantity for ${item.name}`}>{count}</Text>
 
           <Pressable
             style={styles.qtyBtn}
@@ -120,7 +126,6 @@ export default function MenuScreen({ route }) {
           </Pressable>
         </View>
 
-        {/* Line total (optional visual) */}
         <View style={styles.lineTotal}>
           <Text style={styles.lineTotalText}>${lineTotal}</Text>
         </View>
@@ -145,7 +150,6 @@ export default function MenuScreen({ route }) {
         }
       />
 
-      {/* Simple footer summary */}
       <View style={styles.footer}>
         <Text style={styles.subtotalLabel}>Subtotal:</Text>
         <Text style={styles.subtotalValue}>${subtotal.toFixed(2)}</Text>
@@ -187,9 +191,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#cbd5e1',
     backgroundColor: '#ffffff',
   },
-  qtyBtnDisabled: {
-    opacity: 0.4,
-  },
+  qtyBtnDisabled: { opacity: 0.4 },
   qtyBtnText: { fontSize: 18, fontWeight: '900' },
   qtyBtnTextDisabled: { color: '#94a3b8' },
   qtyVal: { minWidth: 20, textAlign: 'center', fontWeight: '800' },
