@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
+import RestaurantsScreen from './screens/RestaurantsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -45,6 +46,11 @@ export default function App() {
           name="Home"
           component={HomeScreen}
           options={{ headerTitle: 'Home' }}
+        />
+        <Stack.Screen
+          name="Restaurants"
+          component={RestaurantsScreen}
+          options={{ headerTitle: 'Restaurants' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
