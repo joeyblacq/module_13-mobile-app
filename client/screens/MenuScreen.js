@@ -1,23 +1,27 @@
 // client/screens/MenuScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, Modal, ScrollView } from 'react-native';
 
 // TODO: point to your backend host:port
 const BASE_URL = 'http://localhost:8080';
 
 export default function MenuScreen({ route }) {
-  const { id, name } = route.params; // restaurant id (and optional name for header)
+  const { id, name } = route.params; // restaurant id (+ optional name for header)
   const [menu, setMenu] = useState(null); // null=loading
   const [error, setError] = useState('');
 
   // Quantities keyed by menu item id; default 0
   const [qty, setQty] = useState({});
 
+  // Order confirmation modal
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   // Reset quantities & state when switching restaurants
   useEffect(() => {
     setQty({});
     setMenu(null);
     setError('');
+    setConfirmOpen(false);
   }, [id]);
 
   useEffect(() => {
@@ -59,15 +63,19 @@ export default function MenuScreen({ route }) {
     fetchMenu();
   }, [id]);
 
-  const subtotal = useMemo(() => {
-    if (!Array.isArray(menu)) return 0;
-    return menu.reduce((sum, it) => sum + (qty[String(it.id)] || 0) * (it.price || 0), 0);
+  const selectedItems = useMemo(() => {
+    if (!Array.isArray(menu)) return [];
+    return menu
+      .map((it) => ({ ...it, qty: qty[String(it.id)] || 0 }))
+      .filter((it) => it.qty > 0);
   }, [menu, qty]);
 
+  const subtotal = useMemo(() => {
+    return selectedItems.reduce((sum, it) => sum + it.qty * (it.price || 0), 0);
+  }, [selectedItems]);
+
   // Enabled only when at least one quantity > 0
-  const hasAnyItems = useMemo(() => {
-    return Object.values(qty).some((n) => (n || 0) > 0);
-  }, [qty]);
+  const hasAnyItems = selectedItems.length > 0;
 
   const inc = (itemId) => {
     setQty((prev) => {
@@ -86,14 +94,17 @@ export default function MenuScreen({ route }) {
   };
 
   const onCreateOrder = () => {
-    // Guard (should be disabled anyway)
-    if (!hasAnyItems) return;
-    // Replace with real order creation / navigation to checkout
-    const items = Object.entries(qty)
-      .filter(([, n]) => (n || 0) > 0)
-      .map(([k, n]) => ({ id: k, qty: n }));
-    Alert.alert('Create Order', `Restaurant: ${name || id}\nItems: ${items.length}\nSubtotal: $${subtotal.toFixed(2)}`);
+    if (!hasAnyItems) return; // guard (should be disabled anyway)
+    setConfirmOpen(true);     // open confirmation modal
   };
+
+  const onConfirmOrder = () => {
+    // Replace with API call to create order
+    setConfirmOpen(false);
+    Alert.alert('Order Created', `Restaurant: ${name || id}\nItems: ${selectedItems.length}\nTotal: $${subtotal.toFixed(2)}`);
+  };
+
+  const onCancelOrder = () => setConfirmOpen(false);
 
   if (menu === null) {
     return (
@@ -182,6 +193,56 @@ export default function MenuScreen({ route }) {
           <Text style={[styles.ctaText, !hasAnyItems && styles.ctaTextDisabled]}>Create Order</Text>
         </Pressable>
       </View>
+
+      {/* Order Confirmation Modal */}
+      <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={onCancelOrder}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Confirm Your Order</Text>
+            <Text style={styles.modalSubtitle}>{name ? `Restaurant: ${name}` : `Restaurant ID: ${id}`}</Text>
+
+            <View style={styles.modalListHeader}>
+              <Text style={[styles.colName, styles.bold]}>Item</Text>
+              <Text style={[styles.colQty, styles.bold]}>Qty</Text>
+              <Text style={[styles.colPrice, styles.bold]}>Price</Text>
+              <Text style={[styles.colTotal, styles.bold]}>Total</Text>
+            </View>
+
+            <ScrollView style={{ maxHeight: 240 }}>
+              {selectedItems.map((it) => (
+                <View key={String(it.id)} style={styles.modalRow}>
+                  <Text style={styles.colName}>{it.name}</Text>
+                  <Text style={styles.colQty}>{it.qty}</Text>
+                  <Text style={styles.colPrice}>${Number(it.price).toFixed(2)}</Text>
+                  <Text style={styles.colTotal}>${(it.qty * it.price).toFixed(2)}</Text>
+                </View>
+              ))}
+              {selectedItems.length === 0 && (
+                <Text style={{ textAlign: 'center', paddingVertical: 12 }}>No items selected.</Text>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Text style={styles.modalSubtotalLabel}>Subtotal</Text>
+              <Text style={styles.modalSubtotalValue}>${subtotal.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable style={[styles.modalBtn, styles.modalCancel]} onPress={onCancelOrder}>
+                <Text style={styles.modalBtnText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalBtn, styles.modalConfirm]}
+                onPress={onConfirmOrder}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm Order"
+              >
+                <Text style={[styles.modalBtnText, styles.modalConfirmText]}>Confirm Order</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -241,13 +302,54 @@ const styles = StyleSheet.create({
   subtotalLabel: { fontSize: 16, fontWeight: '700' },
   subtotalValue: { fontSize: 16, fontWeight: '800' },
 
-  cta: {
-    backgroundColor: '#0a65a0',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
+  cta: { backgroundColor: '#0a65a0', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10 },
   ctaDisabled: { backgroundColor: '#9bbbd0' },
   ctaText: { color: '#fff', fontWeight: '800' },
   ctaTextDisabled: { color: '#f1f5f9' },
+
+  // Modal
+  modalBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center', justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 4, textAlign: 'center' },
+  modalSubtitle: { textAlign: 'center', color: '#475569', marginBottom: 10 },
+
+  modalListHeader: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+  },
+  modalRow: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderColor: '#f5f5f5',
+  },
+  colName: { flex: 2 },
+  colQty: { flex: 0.6, textAlign: 'center' },
+  colPrice: { flex: 0.9, textAlign: 'right' },
+  colTotal: { flex: 0.9, textAlign: 'right' },
+  bold: { fontWeight: '800' },
+
+  modalFooter: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },
+  modalSubtotalLabel: { fontWeight: '700' },
+  modalSubtotalValue: { fontWeight: '800' },
+
+  modalActions: { marginTop: 12, flexDirection: 'row', gap: 10, justifyContent: 'flex-end' },
+  modalBtn: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb' },
+  modalCancel: { backgroundColor: '#fff' },
+  modalConfirm: { backgroundColor: '#0a65a0' },
+  modalBtnText: { fontWeight: '800' },
+  modalConfirmText: { color: '#fff' },
 });
