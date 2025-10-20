@@ -1,19 +1,19 @@
 // client/screens/RestaurantsScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, FlatList, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, FlatList, StyleSheet, Image, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 
-// TODO: change this to your backend base URL
+// TODO: point to your backend host:port
 const BASE_URL = 'http://localhost:8080';
 
-export default function RestaurantsScreen() {
-  const [restaurants, setRestaurants] = useState(null); // null=loading, []=empty list, [...]=data
+export default function RestaurantsScreen({ navigation }) {
+  const [restaurants, setRestaurants] = useState(null); // null=loading
   const [error, setError] = useState('');
 
-  // --- Filters (null means "no filter" = placeholder shown) ---
-  const [ratingFilter, setRatingFilter] = useState(null);   // values: null | 1 | 2 | 3 | 4 | 5 (interpreted as >=)
-  const [priceFilter, setPriceFilter]   = useState(null);   // values: null | 1 | 2 | 3 | 4
+  // filters
+  const [ratingFilter, setRatingFilter] = useState(null);
+  const [priceFilter, setPriceFilter] = useState(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -22,7 +22,6 @@ export default function RestaurantsScreen() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        // Normalize: ensure each item has a rating (fallback 0) + price_range
         const normalized = (Array.isArray(data) ? data : []).map((r, i) => ({
           id: r.id ?? i + 1,
           name: r.name ?? 'Unnamed',
@@ -30,17 +29,21 @@ export default function RestaurantsScreen() {
           phone: r.phone ?? '—',
           price_range: r.price_range ?? r.priceRange ?? null,
           active: typeof r.active === 'boolean' ? r.active : true,
-          rating: r.rating ?? r.stars ?? 0, // try common fields, fallback 0
+          rating: r.rating ?? r.stars ?? 0,
+          image_url:
+            r.image_url ??
+            r.imageUrl ??
+            // fallback placeholder
+            `https://picsum.photos/seed/restaurant_${(r.id ?? i + 1) % 200}/640/360`,
         }));
         setRestaurants(normalized);
-      } catch (e) {
-        // Fallback mock so the UI still demonstrates BOTH filters
+      } catch {
         setRestaurants([
-          { id: 1, name: 'Rocket Pizza',   price_range: 2, email: 'pizza@rocket.com',   phone: '555-1111', active: true,  rating: 4.5 },
-          { id: 2, name: 'Galaxy Burgers', price_range: 1, email: 'burgers@rocket.com', phone: '555-2222', active: true,  rating: 3.2 },
-          { id: 3, name: 'Orbit Sushi',    price_range: 3, email: 'sushi@rocket.com',   phone: '555-3333', active: false, rating: 4.9 },
-          { id: 4, name: 'Comet Tacos',    price_range: 1, email: 'tacos@rocket.com',   phone: '555-4444', active: true,  rating: 2.8 },
-          { id: 5, name: 'Nebula Noodles', price_range: 4, email: 'noodles@rocket.com', phone: '555-5555', active: true,  rating: 5.0 },
+          { id: 1, name: 'Rocket Pizza',   price_range: 2, email: 'pizza@rocket.com',   phone: '555-1111', active: true,  rating: 4.5, image_url: 'https://picsum.photos/seed/rocketpizza/640/360' },
+          { id: 2, name: 'Galaxy Burgers', price_range: 1, email: 'burgers@rocket.com', phone: '555-2222', active: true,  rating: 3.2, image_url: 'https://picsum.photos/seed/galaxyburgers/640/360' },
+          { id: 3, name: 'Orbit Sushi',    price_range: 3, email: 'sushi@rocket.com',   phone: '555-3333', active: false, rating: 4.9, image_url: 'https://picsum.photos/seed/orbitsushi/640/360' },
+          { id: 4, name: 'Comet Tacos',    price_range: 1, email: 'tacos@rocket.com',   phone: '555-4444', active: true,  rating: 2.8, image_url: 'https://picsum.photos/seed/comettacos/640/360' },
+          { id: 5, name: 'Nebula Noodles', price_range: 4, email: 'noodles@rocket.com', phone: '555-5555', active: true,  rating: 5.0, image_url: 'https://picsum.photos/seed/nebula/640/360' },
         ]);
         setError('Using mock data (API fetch failed).');
       }
@@ -48,13 +51,12 @@ export default function RestaurantsScreen() {
     fetchAll();
   }, []);
 
-  // Apply filtering: show ALL when both filters are null
   const filtered = useMemo(() => {
     if (!Array.isArray(restaurants)) return [];
     return restaurants.filter((r) => {
-      const passesRating = ratingFilter == null ? true : (Number(r.rating) || 0) >= ratingFilter;
-      const passesPrice  = priceFilter  == null ? true : Number(r.price_range) === Number(priceFilter);
-      return passesRating && passesPrice;
+      const okRating = ratingFilter == null ? true : (Number(r.rating) || 0) >= ratingFilter;
+      const okPrice  = priceFilter  == null ? true : Number(r.price_range) === Number(priceFilter);
+      return okRating && okPrice;
     });
   }, [restaurants, ratingFilter, priceFilter]);
 
@@ -67,8 +69,22 @@ export default function RestaurantsScreen() {
     );
   }
 
+  const onOpenMenu = (item) => {
+    // Navigate to Menu screen; pass id & name
+    navigation.navigate('Menu', { id: item.id, name: item.name });
+  };
+
   const renderItem = ({ item }) => (
     <View style={styles.card}>
+      {/* Clicking the image redirects to the restaurant’s menu */}
+      <Pressable onPress={() => onOpenMenu(item)} accessible accessibilityRole="imagebutton" accessibilityLabel={`Open ${item.name} menu`}>
+        <Image
+          source={{ uri: item.image_url }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+      </Pressable>
+
       <View style={styles.headerRow}>
         <Text style={styles.name}>{item.name}</Text>
         <View style={styles.badgeRow}>
@@ -103,16 +119,12 @@ export default function RestaurantsScreen() {
     <View style={{ flex: 1 }}>
       {error ? <Text style={styles.warn}>{error}</Text> : null}
 
-      {/* --- Filters row --- */}
+      {/* Filters row */}
       <View style={styles.filters}>
-        {/* Rating filter with placeholder when null */}
         <View style={styles.filterField}>
           <Text style={styles.filterLabel}>Rating</Text>
           <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={ratingFilter}
-              onValueChange={(val) => setRatingFilter(val)}
-            >
+            <Picker selectedValue={ratingFilter} onValueChange={(v) => setRatingFilter(v)}>
               <Picker.Item label="Rating (all)" value={null} />
               <Picker.Item label="≥ 5.0" value={5} />
               <Picker.Item label="≥ 4.5" value={4.5} />
@@ -124,14 +136,10 @@ export default function RestaurantsScreen() {
           </View>
         </View>
 
-        {/* Price filter with placeholder when null */}
         <View style={styles.filterField}>
           <Text style={styles.filterLabel}>Price</Text>
           <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={priceFilter}
-              onValueChange={(val) => setPriceFilter(val)}
-            >
+            <Picker selectedValue={priceFilter} onValueChange={(v) => setPriceFilter(v)}>
               <Picker.Item label="Price (all)" value={null} />
               <Picker.Item label="$ (1)" value={1} />
               <Picker.Item label="$$ (2)" value={2} />
@@ -142,7 +150,6 @@ export default function RestaurantsScreen() {
         </View>
       </View>
 
-      {/* List (shows ALL on arrival because both filters are null) */}
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
@@ -162,26 +169,16 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   warn: { color: '#8a6d3b', backgroundColor: '#fcf8e3', padding: 8, textAlign: 'center' },
 
-  filters: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
+  filters: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 10 },
   filterField: { flex: 1 },
   filterLabel: { fontWeight: '700', marginBottom: 4 },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
+  pickerWrapper: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, overflow: 'hidden' },
 
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: '#eee',
     shadowColor: '#000',
@@ -189,17 +186,19 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  image: { width: '100%', height: 160, borderRadius: 10, marginBottom: 10, backgroundColor: '#f2f2f2' },
+
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   name: { fontSize: 18, fontWeight: '700' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#f1f5f9' },
   badgeText: { marginLeft: 6, fontWeight: '600' },
 
-  row: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   icon: { marginRight: 8 },
   mono: { fontFamily: 'System' },
 
-  status: { marginTop: 10, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  status: { marginTop: 8, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   active: { backgroundColor: '#e6f4ea' },
   inactive: { backgroundColor: '#fdecea' },
   statusText: { marginLeft: 6, fontWeight: '600' },
