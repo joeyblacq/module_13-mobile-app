@@ -19,7 +19,7 @@ const RestaurantsStack = createNativeStackNavigator();
 const OrdersStack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
-// Home tab stack (header visible)
+// Home tab stack (top header shown)
 function HomeStackScreen() {
   return (
     <HomeStack.Navigator>
@@ -28,8 +28,7 @@ function HomeStackScreen() {
   );
 }
 
-// Restaurants tab stack (header visible; Menu is inside this stack)
-// Footer stays visible when navigating to Menu
+// Restaurants tab stack (top header shown). Menu lives inside this stack.
 function RestaurantsStackScreen() {
   return (
     <RestaurantsStack.Navigator>
@@ -47,7 +46,7 @@ function RestaurantsStackScreen() {
   );
 }
 
-// Orders tab stack (header visible)
+// Orders tab stack (top header shown)
 function OrdersStackScreen() {
   return (
     <OrdersStack.Navigator>
@@ -60,12 +59,10 @@ function OrdersStackScreen() {
   );
 }
 
-// Footer nav across the app (except Login)
+// Bottom tabs (footer) across the app (except Login)
 function MainTabs() {
   return (
-    <Tabs.Navigator
-      screenOptions={{ headerShown: false }}
-    >
+    <Tabs.Navigator screenOptions={{ headerShown: false }}>
       <Tabs.Screen
         name="TabHome"
         component={HomeStackScreen}
@@ -95,7 +92,7 @@ function MainTabs() {
 }
 
 export default function App() {
-  const [initialRoute, setInitialRoute] = useState<string | null>(null); // 'Login' | 'Main'
+  const [initialRoute, setInitialRoute] = useState(null); // 'Login' | 'Main'
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -121,18 +118,9 @@ export default function App() {
     <NavigationContainer>
       <RootStack.Navigator initialRouteName={initialRoute}>
         {/* Login page: NO header, NO footer */}
-        <RootStack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-
-        {/* Main app: Header visible (inside each stack), Footer = Bottom Tabs */}
-        <RootStack.Screen
-          name="Main"
-          component={MainTabs}
-          options={{ headerShown: false }}
-        />
+        <RootStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        {/* Main app: header from inner stacks, footer = bottom tabs */}
+        <RootStack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
