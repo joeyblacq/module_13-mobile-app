@@ -9,6 +9,7 @@ import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
 import RestaurantsScreen from './screens/RestaurantsScreen';
 import MenuScreen from './screens/MenuScreen';
+import OrderHistoryScreen from './screens/OrderHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,11 +42,8 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerTitle: 'Rocket Food Delivery' }} />
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerTitle: 'Home' }} />
         <Stack.Screen name="Restaurants" component={RestaurantsScreen} options={{ headerTitle: 'Restaurants' }} />
-        <Stack.Screen
-          name="Menu"
-          component={MenuScreen}
-          options={({ route }) => ({ headerTitle: route.params?.name ? `${route.params.name} Menu` : 'Menu' })}
-        />
+        <Stack.Screen name="Menu" component={MenuScreen} options={{ headerTitle: 'Menu' }} />
+        <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{ headerTitle: 'Order History' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
