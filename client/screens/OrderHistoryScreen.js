@@ -17,57 +17,47 @@ const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
 export default function OrderHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
-
-  // Modal state
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // Replace with real fetch to your backend later
   useEffect(() => {
-    const load = async () => {
+    const loadOrders = async () => {
       try {
-        // Simulated network delay
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 350));
         setOrders([
           {
             id: 'ORD-1001',
             status: 'Delivered',
-            date: '2025-10-10 12:35',
+            date: '2025-10-12 11:45 AM',
+            courier: 'Imedi Swift',
             items: [
               { name: 'Margherita Pizza', qty: 1, price: 12.99 },
-              { name: 'Tiramisu', qty: 2, price: 6.75 },
+              { name: 'Garlic Bread', qty: 2, price: 3.49 },
             ],
           },
           {
             id: 'ORD-1002',
             status: 'Preparing',
-            date: '2025-10-17 09:20',
+            date: '2025-10-17 03:22 PM',
+            courier: 'SpeedyDash Logistics',
             items: [
+              { name: 'Pasta Alfredo', qty: 1, price: 14.75 },
               { name: 'Caesar Salad', qty: 1, price: 8.5 },
-              { name: 'Spaghetti Bolognese', qty: 1, price: 13.25 },
             ],
           },
           {
             id: 'ORD-1003',
             status: 'Cancelled',
-            date: '2025-10-18 18:05',
-            items: [{ name: 'Garlic Bread', qty: 3, price: 3.5 }],
-          },
-          {
-            id: 'ORD-1004',
-            status: 'Delivered',
-            date: '2025-10-19 14:10',
-            items: [
-              { name: 'Pepperoni Pizza', qty: 1, price: 13.99 },
-              { name: 'Cola', qty: 2, price: 1.99 },
-            ],
+            date: '2025-10-19 09:10 AM',
+            courier: 'N/A',
+            items: [{ name: 'Tiramisu', qty: 3, price: 5.99 }],
           },
         ]);
       } finally {
         setLoading(false);
       }
     };
-    load();
+    loadOrders();
   }, []);
 
   const openDetails = (order) => {
@@ -81,7 +71,7 @@ export default function OrderHistoryScreen() {
   };
 
   const Header = () => (
-    <View style={[styles.row, styles.headerRow]} accessibilityRole="header">
+    <View style={[styles.row, styles.headerRow]}>
       <Text style={[styles.cellOrder, styles.headerText]}>Order</Text>
       <Text style={[styles.cellStatus, styles.headerText]}>Status</Text>
       <Text style={[styles.cellView, styles.headerText]}>View</Text>
@@ -90,19 +80,12 @@ export default function OrderHistoryScreen() {
 
   const Row = ({ item }) => (
     <View style={styles.row}>
-      <Text style={styles.cellOrder} numberOfLines={1}>
-        {item.id}
-      </Text>
+      <Text style={styles.cellOrder}>{item.id}</Text>
       <Text style={[styles.cellStatus, styles.statusText(item.status)]}>
         {item.status}
       </Text>
       <View style={styles.cellView}>
-        <Pressable
-          style={styles.viewIconBtn}
-          onPress={() => openDetails(item)}
-          accessibilityRole="button"
-          accessibilityLabel={`View details for ${item.id}`}
-        >
+        <Pressable style={styles.viewIconBtn} onPress={() => openDetails(item)}>
           <FontAwesome name="eye" size={18} color="#0a65a0" />
           <Text style={styles.viewIconText}>View</Text>
         </Pressable>
@@ -114,13 +97,16 @@ export default function OrderHistoryScreen() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8 }}>Loading orders…</Text>
+        <Text style={{ marginTop: 8 }}>Loading orders...</Text>
       </View>
     );
   }
 
   const orderSubtotal = (order) =>
-    (order?.items || []).reduce((sum, it) => sum + (it.qty || 0) * (it.price || 0), 0);
+    (order?.items || []).reduce(
+      (sum, it) => sum + (it.qty || 0) * (it.price || 0),
+      0
+    );
 
   return (
     <View style={styles.container}>
@@ -131,34 +117,27 @@ export default function OrderHistoryScreen() {
         renderItem={Row}
         ItemSeparatorComponent={() => <View style={styles.sep} />}
         contentContainerStyle={{ padding: 16 }}
-        ListEmptyComponent={
-          <Text style={{ textAlign: 'center', paddingVertical: 24 }}>
-            No orders yet.
-          </Text>
-        }
-        accessibilityLabel="Order History Table"
       />
 
-      {/* Order History Detail Modal */}
-      <Modal
-        visible={detailOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closeDetails}
-      >
+      {/* ✅ Order History Detail Modal */}
+      <Modal visible={detailOpen} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Order Details</Text>
-            {selectedOrder ? (
+            {selectedOrder && (
               <>
+                <Text style={styles.modalTitle}>Order Details</Text>
                 <Text style={styles.modalSub}>
-                  <Text style={styles.bold}>Order:</Text> {selectedOrder.id}
+                  <Text style={styles.bold}>Order ID:</Text> {selectedOrder.id}
                 </Text>
                 <Text style={styles.modalSub}>
                   <Text style={styles.bold}>Status:</Text> {selectedOrder.status}
                 </Text>
                 <Text style={styles.modalSub}>
                   <Text style={styles.bold}>Date:</Text> {selectedOrder.date}
+                </Text>
+                <Text style={styles.modalSub}>
+                  <Text style={styles.bold}>Courier:</Text>{' '}
+                  {selectedOrder.courier}
                 </Text>
 
                 <View style={styles.modalListHeader}>
@@ -168,23 +147,17 @@ export default function OrderHistoryScreen() {
                   <Text style={[styles.colTotal, styles.bold]}>Total</Text>
                 </View>
 
-                <ScrollView style={{ maxHeight: 260 }}>
-                  {(selectedOrder.items || []).map((it, idx) => {
-                    const lineTotal = (it.qty || 0) * (it.price || 0);
-                    return (
-                      <View key={`${selectedOrder.id}-${idx}`} style={styles.modalRow}>
-                        <Text style={styles.colName}>{it.name}</Text>
-                        <Text style={styles.colQty}>{it.qty}</Text>
-                        <Text style={styles.colPrice}>{formatMoney(it.price)}</Text>
-                        <Text style={styles.colTotal}>{formatMoney(lineTotal)}</Text>
-                      </View>
-                    );
-                  })}
-                  {(selectedOrder.items || []).length === 0 && (
-                    <Text style={{ textAlign: 'center', paddingVertical: 12 }}>
-                      No items for this order.
-                    </Text>
-                  )}
+                <ScrollView style={{ maxHeight: 240 }}>
+                  {selectedOrder.items.map((it, idx) => (
+                    <View key={idx} style={styles.modalRow}>
+                      <Text style={styles.colName}>{it.name}</Text>
+                      <Text style={styles.colQty}>{it.qty}</Text>
+                      <Text style={styles.colPrice}>{formatMoney(it.price)}</Text>
+                      <Text style={styles.colTotal}>
+                        {formatMoney(it.qty * it.price)}
+                      </Text>
+                    </View>
+                  ))}
                 </ScrollView>
 
                 <View style={styles.modalFooter}>
@@ -193,14 +166,12 @@ export default function OrderHistoryScreen() {
                     {formatMoney(orderSubtotal(selectedOrder))}
                   </Text>
                 </View>
-              </>
-            ) : null}
 
-            <View style={styles.modalActions}>
-              <Pressable style={[styles.modalBtn, styles.modalClose]} onPress={closeDetails}>
-                <Text style={styles.modalBtnText}>Close</Text>
-              </Pressable>
-            </View>
+                <Pressable style={styles.closeBtn} onPress={closeDetails}>
+                  <Text style={styles.closeBtnText}>Close</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -211,7 +182,6 @@ export default function OrderHistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
   headerRow: {
     backgroundColor: '#f1f5f9',
     borderWidth: 1,
@@ -221,24 +191,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   headerText: { fontWeight: '800', color: '#0f172a' },
-
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 10,
+    backgroundColor: '#fff',
   },
-
   sep: { height: 10 },
-
   cellOrder: { flex: 2, fontWeight: '700' },
   cellStatus: { flex: 1 },
-  cellView: { flex: 1, alignItems: 'flex-start' },
-
+  cellView: { flex: 1 },
   statusText: (status) => ({
     fontWeight: '700',
     color:
@@ -250,21 +216,18 @@ const styles = StyleSheet.create({
         ? '#ef4444'
         : '#334155',
   }),
-
   viewIconBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
     borderWidth: 1,
     borderColor: '#0a65a0',
     backgroundColor: '#e6f2fa',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
+    gap: 6,
   },
   viewIconText: { color: '#0a65a0', fontWeight: '800' },
-
-  // Modal
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -280,15 +243,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  modalTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
   modalSub: { marginBottom: 4 },
   bold: { fontWeight: '800' },
-
   modalListHeader: {
     flexDirection: 'row',
-    paddingVertical: 6,
     borderBottomWidth: 1,
     borderColor: '#eee',
+    paddingVertical: 6,
     marginTop: 8,
   },
   modalRow: {
@@ -301,7 +263,6 @@ const styles = StyleSheet.create({
   colQty: { flex: 0.6, textAlign: 'center' },
   colPrice: { flex: 0.9, textAlign: 'right' },
   colTotal: { flex: 0.9, textAlign: 'right' },
-
   modalFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -309,20 +270,13 @@ const styles = StyleSheet.create({
   },
   modalSubtotalLabel: { fontWeight: '700' },
   modalSubtotalValue: { fontWeight: '800' },
-
-  modalActions: {
-    marginTop: 12,
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'flex-end',
-  },
-  modalBtn: {
-    paddingHorizontal: 14,
+  closeBtn: {
+    marginTop: 10,
+    alignSelf: 'center',
+    backgroundColor: '#0a65a0',
     paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
-  modalClose: { backgroundColor: '#fff' },
-  modalBtnText: { fontWeight: '800' },
+  closeBtnText: { color: '#fff', fontWeight: '800' },
 });
