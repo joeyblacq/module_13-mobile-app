@@ -4,6 +4,8 @@ import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { FontAwesome } from '@expo/vector-icons';
 
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -11,16 +13,95 @@ import RestaurantsScreen from './screens/RestaurantsScreen';
 import MenuScreen from './screens/MenuScreen';
 import OrderHistoryScreen from './screens/OrderHistoryScreen';
 
-const Stack = createNativeStackNavigator();
+const RootStack = createNativeStackNavigator();
+const HomeStack = createNativeStackNavigator();
+const RestaurantsStack = createNativeStackNavigator();
+const OrdersStack = createNativeStackNavigator();
+const Tabs = createBottomTabNavigator();
+
+// Home tab stack (header visible)
+function HomeStackScreen() {
+  return (
+    <HomeStack.Navigator>
+      <HomeStack.Screen name="Home" component={HomeScreen} options={{ headerTitle: 'Home' }} />
+    </HomeStack.Navigator>
+  );
+}
+
+// Restaurants tab stack (header visible; Menu is inside this stack)
+// Footer stays visible when navigating to Menu
+function RestaurantsStackScreen() {
+  return (
+    <RestaurantsStack.Navigator>
+      <RestaurantsStack.Screen
+        name="Restaurants"
+        component={RestaurantsScreen}
+        options={{ headerTitle: 'Restaurants' }}
+      />
+      <RestaurantsStack.Screen
+        name="Menu"
+        component={MenuScreen}
+        options={{ headerTitle: 'Menu' }}
+      />
+    </RestaurantsStack.Navigator>
+  );
+}
+
+// Orders tab stack (header visible)
+function OrdersStackScreen() {
+  return (
+    <OrdersStack.Navigator>
+      <OrdersStack.Screen
+        name="OrderHistory"
+        component={OrderHistoryScreen}
+        options={{ headerTitle: 'Order History' }}
+      />
+    </OrdersStack.Navigator>
+  );
+}
+
+// Footer nav across the app (except Login)
+function MainTabs() {
+  return (
+    <Tabs.Navigator
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen
+        name="TabHome"
+        component={HomeStackScreen}
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => <FontAwesome name="home" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="TabRestaurants"
+        component={RestaurantsStackScreen}
+        options={{
+          title: 'Restaurants',
+          tabBarIcon: ({ color, size }) => <FontAwesome name="cutlery" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="TabOrders"
+        component={OrdersStackScreen}
+        options={{
+          title: 'Orders',
+          tabBarIcon: ({ color, size }) => <FontAwesome name="list-alt" color={color} size={size} />,
+        }}
+      />
+    </Tabs.Navigator>
+  );
+}
 
 export default function App() {
-  const [initialRoute, setInitialRoute] = useState(null); // 'Login' | 'Home'
+  const [initialRoute, setInitialRoute] = useState<string | null>(null); // 'Login' | 'Main'
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem('auth_token');
-        setInitialRoute(token ? 'Home' : 'Login');
+        setInitialRoute(token ? 'Main' : 'Login');
       } catch {
         setInitialRoute('Login');
       }
@@ -38,13 +119,21 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName={initialRoute}>
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerTitle: 'Rocket Food Delivery' }} />
-        <Stack.Screen name="Home" component={HomeScreen} options={{ headerTitle: 'Home' }} />
-        <Stack.Screen name="Restaurants" component={RestaurantsScreen} options={{ headerTitle: 'Restaurants' }} />
-        <Stack.Screen name="Menu" component={MenuScreen} options={{ headerTitle: 'Menu' }} />
-        <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} options={{ headerTitle: 'Order History' }} />
-      </Stack.Navigator>
+      <RootStack.Navigator initialRouteName={initialRoute}>
+        {/* Login page: NO header, NO footer */}
+        <RootStack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
+
+        {/* Main app: Header visible (inside each stack), Footer = Bottom Tabs */}
+        <RootStack.Screen
+          name="Main"
+          component={MainTabs}
+          options={{ headerShown: false }}
+        />
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }
