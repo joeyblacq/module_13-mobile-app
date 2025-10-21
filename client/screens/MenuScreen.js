@@ -1,9 +1,12 @@
 // client/screens/MenuScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, Modal, ScrollView } from 'react-native';
+import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, Modal, ScrollView, Image } from 'react-native';
 
 // TODO: point to your backend host:port
 const BASE_URL = 'http://localhost:8080';
+
+// Shared menu image for ALL restaurants (path is from /client/screens to /client/assets)
+const MENU_HERO = require('../assets/RestaurantMenu.jpg');
 
 export default function MenuScreen({ route }) {
   const { id, name } = route.params; // restaurant id (+ optional name for header)
@@ -94,8 +97,8 @@ export default function MenuScreen({ route }) {
   };
 
   const onCreateOrder = () => {
-    if (!hasAnyItems) return; // guard (should be disabled anyway)
-    setConfirmOpen(true);     // open confirmation modal
+    if (!hasAnyItems) return; // guard
+    setConfirmOpen(true);
   };
 
   const onConfirmOrder = () => {
@@ -161,6 +164,9 @@ export default function MenuScreen({ route }) {
   return (
     <View style={{ flex: 1 }}>
       {error ? <Text style={styles.warn}>{error}</Text> : null}
+
+      {/* Shared menu image for ALL restaurants */}
+      <Image source={MENU_HERO} style={styles.menuImage} resizeMode="cover" />
 
       <FlatList
         data={menu}
@@ -251,6 +257,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   warn: { color: '#8a6d3b', backgroundColor: '#fcf8e3', padding: 8, textAlign: 'center' },
 
+  // Shared menu image styling
+  menuImage: { width: '100%', height: 160, backgroundColor: '#f2f2f2' },
+
   item: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -309,8 +318,10 @@ const styles = StyleSheet.create({
 
   // Modal
   modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center', justifyContent: 'center',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 20,
   },
   modalCard: {
