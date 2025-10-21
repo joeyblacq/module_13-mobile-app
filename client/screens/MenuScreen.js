@@ -5,8 +5,22 @@ import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, 
 // TODO: point to your backend host:port
 const BASE_URL = 'http://localhost:8080';
 
-// Shared menu image for ALL restaurants (path is from /client/screens to /client/assets)
+// Shared menu image for ALL restaurants
 const MENU_HERO = require('../assets/RestaurantMenu.jpg');
+
+// Format numbers as $X.YY
+const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
+
+// Heuristic: normalize raw price values to dollars.
+// - If the value looks like "cents" (e.g., 2095), convert to 20.95.
+// - If it's already decimal dollars, keep it.
+const normalizePrice = (raw) => {
+  const num = Number(raw);
+  if (!isFinite(num)) return 0;
+  // Treat large integers (>= 100 and no decimal) as cents
+  if (Number.isInteger(num) && num >= 100) return num / 100;
+  return num;
+};
 
 export default function MenuScreen({ route }) {
   const { id, name } = route.params; // restaurant id (+ optional name for header)
@@ -35,12 +49,12 @@ export default function MenuScreen({ route }) {
         const data = await res.json();
         const items = Array.isArray(data) ? data : [];
 
-        // Normalize
+        // Normalize & ensure standard currency format later via formatMoney()
         const normalized = items.map((it, idx) => ({
           id: it.id ?? `m-${id}-${idx + 1}`,
           name: it.name ?? `Item ${idx + 1}`,
           desc: it.desc ?? it.description ?? '',
-          price: typeof it.price === 'number' ? it.price : Number(it.price) || 0,
+          price: normalizePrice(it.price),
         }));
 
         setMenu(normalized);
@@ -50,7 +64,7 @@ export default function MenuScreen({ route }) {
         normalized.forEach((it) => (zeroQty[String(it.id)] = 0));
         setQty(zeroQty);
       } catch {
-        // Fallback mock data
+        // Fallback mock data (already in dollars)
         const mock = [
           { id: `m-${id}-1`, name: 'Margherita Pizza', desc: 'Tomato, mozzarella, basil', price: 12.99 },
           { id: `m-${id}-2`, name: 'Caesar Salad', desc: 'Romaine, parmesan, croutons', price: 8.5 },
@@ -66,6 +80,7 @@ export default function MenuScreen({ route }) {
     fetchMenu();
   }, [id]);
 
+  // Derive selected items with quantities for display & totals
   const selectedItems = useMemo(() => {
     if (!Array.isArray(menu)) return [];
     return menu
@@ -104,7 +119,10 @@ export default function MenuScreen({ route }) {
   const onConfirmOrder = () => {
     // Replace with API call to create order
     setConfirmOpen(false);
-    Alert.alert('Order Created', `Restaurant: ${name || id}\nItems: ${selectedItems.length}\nTotal: $${subtotal.toFixed(2)}`);
+    Alert.alert(
+      'Order Created',
+      `Restaurant: ${name || id}\nItems: ${selectedItems.length}\nTotal: ${formatMoney(subtotal)}`
+    );
   };
 
   const onCancelOrder = () => setConfirmOpen(false);
@@ -120,14 +138,15 @@ export default function MenuScreen({ route }) {
 
   const renderItem = ({ item }) => {
     const count = qty[String(item.id)] ?? 0;
-    const lineTotal = (count * (item.price || 0)).toFixed(2);
+    const lineTotal = count * (item.price || 0);
 
     return (
       <View style={styles.item}>
         <View style={{ flex: 1 }}>
           <Text style={styles.itemName}>{item.name}</Text>
           {item.desc ? <Text style={styles.itemDesc}>{item.desc}</Text> : null}
-          <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
+          {/* Always display money in $X.YY format */}
+          <Text style={styles.itemPrice}>{formatMoney(item.price)}</Text>
         </View>
 
         {/* Quantity controls (buttons only; no typing) */}
@@ -155,7 +174,7 @@ export default function MenuScreen({ route }) {
         </View>
 
         <View style={styles.lineTotal}>
-          <Text style={styles.lineTotalText}>${lineTotal}</Text>
+          <Text style={styles.lineTotalText}>{formatMoney(lineTotal)}</Text>
         </View>
       </View>
     );
@@ -185,7 +204,7 @@ export default function MenuScreen({ route }) {
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
           <Text style={styles.subtotalLabel}>Subtotal:</Text>
-          <Text style={styles.subtotalValue}>${subtotal.toFixed(2)}</Text>
+          <Text style={styles.subtotalValue}>{formatMoney(subtotal)}</Text>
         </View>
 
         <Pressable
@@ -200,7 +219,7 @@ export default function MenuScreen({ route }) {
         </Pressable>
       </View>
 
-      {/* Order Confirmation Modal */}
+      {/* Order Confirmation Modal — shows exact, up-to-date details */}
       <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={onCancelOrder}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -215,14 +234,17 @@ export default function MenuScreen({ route }) {
             </View>
 
             <ScrollView style={{ maxHeight: 240 }}>
-              {selectedItems.map((it) => (
-                <View key={String(it.id)} style={styles.modalRow}>
-                  <Text style={styles.colName}>{it.name}</Text>
-                  <Text style={styles.colQty}>{it.qty}</Text>
-                  <Text style={styles.colPrice}>${Number(it.price).toFixed(2)}</Text>
-                  <Text style={styles.colTotal}>${(it.qty * it.price).toFixed(2)}</Text>
-                </View>
-              ))}
+              {selectedItems.map((it) => {
+                const rowTotal = it.qty * (it.price || 0);
+                return (
+                  <View key={String(it.id)} style={styles.modalRow}>
+                    <Text style={styles.colName}>{it.name}</Text>
+                    <Text style={styles.colQty}>{it.qty}</Text>
+                    <Text style={styles.colPrice}>{formatMoney(it.price)}</Text>
+                    <Text style={styles.colTotal}>{formatMoney(rowTotal)}</Text>
+                  </View>
+                );
+              })}
               {selectedItems.length === 0 && (
                 <Text style={{ textAlign: 'center', paddingVertical: 12 }}>No items selected.</Text>
               )}
@@ -230,7 +252,7 @@ export default function MenuScreen({ route }) {
 
             <View style={styles.modalFooter}>
               <Text style={styles.modalSubtotalLabel}>Subtotal</Text>
-              <Text style={styles.modalSubtotalValue}>${subtotal.toFixed(2)}</Text>
+              <Text style={styles.modalSubtotalValue}>{formatMoney(subtotal)}</Text>
             </View>
 
             <View style={styles.modalActions}>
