@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, Modal, ScrollView, Image } from 'react-native';
 
-// TODO: point to your backend host:port
+// TODO: point to your backend base URL
 const BASE_URL = 'http://localhost:8080';
 
 // Shared menu image for ALL restaurants
@@ -11,19 +11,16 @@ const MENU_HERO = require('../assets/RestaurantMenu.jpg');
 // Format numbers as $X.YY
 const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
 
-// Heuristic: normalize raw price values to dollars.
-// - If the value looks like "cents" (e.g., 2095), convert to 20.95.
-// - If it's already decimal dollars, keep it.
+// Heuristic cents→dollars normalization (e.g., 2095 -> 20.95)
 const normalizePrice = (raw) => {
   const num = Number(raw);
   if (!isFinite(num)) return 0;
-  // Treat large integers (>= 100 and no decimal) as cents
   if (Number.isInteger(num) && num >= 100) return num / 100;
   return num;
 };
 
 export default function MenuScreen({ route }) {
-  const { id, name } = route.params; // restaurant id (+ optional name for header)
+  const { id, name } = route.params; // restaurant id (+ optional name)
   const [menu, setMenu] = useState(null); // null=loading
   const [error, setError] = useState('');
 
@@ -33,12 +30,16 @@ export default function MenuScreen({ route }) {
   // Order confirmation modal
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // Reset quantities & state when switching restaurants
+  // ✅ Processing state: while true, the Create Order button is disabled & shows “Processing Order…”
+  const [processing, setProcessing] = useState(false);
+
+  // Reset when switching restaurants
   useEffect(() => {
     setQty({});
     setMenu(null);
     setError('');
     setConfirmOpen(false);
+    setProcessing(false);
   }, [id]);
 
   useEffect(() => {
@@ -49,7 +50,6 @@ export default function MenuScreen({ route }) {
         const data = await res.json();
         const items = Array.isArray(data) ? data : [];
 
-        // Normalize & ensure standard currency format later via formatMoney()
         const normalized = items.map((it, idx) => ({
           id: it.id ?? `m-${id}-${idx + 1}`,
           name: it.name ?? `Item ${idx + 1}`,
@@ -59,28 +59,26 @@ export default function MenuScreen({ route }) {
 
         setMenu(normalized);
 
-        // Default all quantities to 0
-        const zeroQty = {};
-        normalized.forEach((it) => (zeroQty[String(it.id)] = 0));
-        setQty(zeroQty);
+        const zero = {};
+        normalized.forEach((it) => (zero[String(it.id)] = 0));
+        setQty(zero);
       } catch {
-        // Fallback mock data (already in dollars)
         const mock = [
           { id: `m-${id}-1`, name: 'Margherita Pizza', desc: 'Tomato, mozzarella, basil', price: 12.99 },
           { id: `m-${id}-2`, name: 'Caesar Salad', desc: 'Romaine, parmesan, croutons', price: 8.5 },
           { id: `m-${id}-3`, name: 'Tiramisu', desc: 'Coffee-soaked ladyfingers, mascarpone', price: 6.75 },
         ];
         setMenu(mock);
-        const zeroQty = {};
-        mock.forEach((it) => (zeroQty[String(it.id)] = 0));
-        setQty(zeroQty);
+        const zero = {};
+        mock.forEach((it) => (zero[String(it.id)] = 0));
+        setQty(zero);
         setError('Using mock data (API fetch failed).');
       }
     };
     fetchMenu();
   }, [id]);
 
-  // Derive selected items with quantities for display & totals
+  // Selected items for modal & totals
   const selectedItems = useMemo(() => {
     if (!Array.isArray(menu)) return [];
     return menu
@@ -88,11 +86,12 @@ export default function MenuScreen({ route }) {
       .filter((it) => it.qty > 0);
   }, [menu, qty]);
 
-  const subtotal = useMemo(() => {
-    return selectedItems.reduce((sum, it) => sum + it.qty * (it.price || 0), 0);
-  }, [selectedItems]);
+  const subtotal = useMemo(
+    () => selectedItems.reduce((sum, it) => sum + it.qty * (it.price || 0), 0),
+    [selectedItems]
+  );
 
-  // Enabled only when at least one quantity > 0
+  // Enabled only when at least one quantity > 0 (and not processing)
   const hasAnyItems = selectedItems.length > 0;
 
   const inc = (itemId) => {
@@ -106,23 +105,59 @@ export default function MenuScreen({ route }) {
     setQty((prev) => {
       const key = String(itemId);
       const current = prev[key] || 0;
-      // Never negative
-      return { ...prev, [key]: Math.max(0, current - 1) };
+      return { ...prev, [key]: Math.max(0, current - 1) }; // never negative
     });
   };
 
   const onCreateOrder = () => {
-    if (!hasAnyItems) return; // guard
+    if (!hasAnyItems || processing) return; // guard
     setConfirmOpen(true);
   };
 
-  const onConfirmOrder = () => {
-    // Replace with API call to create order
+  const onConfirmOrder = async () => {
+    // Begin processing: disable Create Order button and change its text
+    setProcessing(true);
     setConfirmOpen(false);
-    Alert.alert(
-      'Order Created',
-      `Restaurant: ${name || id}\nItems: ${selectedItems.length}\nTotal: ${formatMoney(subtotal)}`
-    );
+    try {
+      // Build payload
+      const items = selectedItems.map((it) => ({
+        id: it.id,
+        name: it.name,
+        qty: it.qty,
+        price: it.price,
+        total: it.qty * (it.price || 0),
+      }));
+
+      // Simulated/real API call
+      const res = await fetch(`${BASE_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          restaurantId: id,
+          restaurantName: name ?? null,
+          items,
+          subtotal,
+        }),
+      });
+
+      if (!res.ok) {
+        const msg = `HTTP ${res.status}`;
+        throw new Error(msg);
+      }
+
+      // Optional parse response
+      // const result = await res.json();
+
+      Alert.alert('Order Created', `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(subtotal)}`);
+      // (Optional) reset quantities after successful order:
+      const zero = {};
+      Object.keys(qty).forEach((k) => (zero[k] = 0));
+      setQty(zero);
+    } catch (e) {
+      Alert.alert('Order Failed', String(e?.message || e || 'Unknown error'));
+    } finally {
+      setProcessing(false); // Re-enable Create Order button
+    }
   };
 
   const onCancelOrder = () => setConfirmOpen(false);
@@ -145,7 +180,6 @@ export default function MenuScreen({ route }) {
         <View style={{ flex: 1 }}>
           <Text style={styles.itemName}>{item.name}</Text>
           {item.desc ? <Text style={styles.itemDesc}>{item.desc}</Text> : null}
-          {/* Always display money in $X.YY format */}
           <Text style={styles.itemPrice}>{formatMoney(item.price)}</Text>
         </View>
 
@@ -154,7 +188,7 @@ export default function MenuScreen({ route }) {
           <Pressable
             style={[styles.qtyBtn, count === 0 && styles.qtyBtnDisabled]}
             onPress={() => dec(item.id)}
-            disabled={count === 0}
+            disabled={count === 0 || processing}
             accessibilityRole="button"
             accessibilityLabel={`Decrease ${item.name} quantity`}
           >
@@ -166,6 +200,7 @@ export default function MenuScreen({ route }) {
           <Pressable
             style={styles.qtyBtn}
             onPress={() => inc(item.id)}
+            disabled={processing}
             accessibilityRole="button"
             accessibilityLabel={`Increase ${item.name} quantity`}
           >
@@ -209,17 +244,20 @@ export default function MenuScreen({ route }) {
 
         <Pressable
           onPress={onCreateOrder}
-          disabled={!hasAnyItems}
-          style={[styles.cta, !hasAnyItems && styles.ctaDisabled]}
+          disabled={!hasAnyItems || processing}
+          style={[styles.cta, (!hasAnyItems || processing) && styles.ctaDisabled]}
           accessibilityRole="button"
-          accessibilityState={{ disabled: !hasAnyItems }}
+          accessibilityState={{ disabled: !hasAnyItems || processing }}
           accessibilityLabel="Create Order"
         >
-          <Text style={[styles.ctaText, !hasAnyItems && styles.ctaTextDisabled]}>Create Order</Text>
+          {/* ✅ Change label when processing */}
+          <Text style={[styles.ctaText, (!hasAnyItems || processing) && styles.ctaTextDisabled]}>
+            {processing ? 'Processing Order…' : 'Create Order'}
+          </Text>
         </Pressable>
       </View>
 
-      {/* Order Confirmation Modal — shows exact, up-to-date details */}
+      {/* Order Confirmation Modal */}
       <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={onCancelOrder}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
@@ -256,12 +294,13 @@ export default function MenuScreen({ route }) {
             </View>
 
             <View style={styles.modalActions}>
-              <Pressable style={[styles.modalBtn, styles.modalCancel]} onPress={onCancelOrder}>
+              <Pressable style={[styles.modalBtn, styles.modalCancel]} onPress={onCancelOrder} disabled={processing}>
                 <Text style={styles.modalBtnText}>Cancel</Text>
               </Pressable>
               <Pressable
                 style={[styles.modalBtn, styles.modalConfirm]}
                 onPress={onConfirmOrder}
+                disabled={processing}
                 accessibilityRole="button"
                 accessibilityLabel="Confirm Order"
               >
@@ -279,7 +318,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   warn: { color: '#8a6d3b', backgroundColor: '#fcf8e3', padding: 8, textAlign: 'center' },
 
-  // Shared menu image styling
   menuImage: { width: '100%', height: 160, backgroundColor: '#f2f2f2' },
 
   item: {
@@ -340,34 +378,22 @@ const styles = StyleSheet.create({
 
   // Modal
   modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center', justifyContent: 'center',
     padding: 20,
   },
   modalCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    width: '100%', backgroundColor: '#fff', borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: '#e5e7eb',
   },
   modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 4, textAlign: 'center' },
   modalSubtitle: { textAlign: 'center', color: '#475569', marginBottom: 10 },
 
   modalListHeader: {
-    flexDirection: 'row',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
+    flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderColor: '#eee',
   },
   modalRow: {
-    flexDirection: 'row',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderColor: '#f5f5f5',
+    flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderColor: '#f5f5f5',
   },
   colName: { flex: 2 },
   colQty: { flex: 0.6, textAlign: 'center' },
