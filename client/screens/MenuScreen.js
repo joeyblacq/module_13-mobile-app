@@ -1,6 +1,8 @@
+
 // client/screens/MenuScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, Modal, ScrollView, Image } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
 
 // TODO: point to your backend base URL
 const BASE_URL = 'http://localhost:8080';
@@ -30,8 +32,11 @@ export default function MenuScreen({ route }) {
   // Order confirmation modal
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // ✅ Processing state: while true, the Create Order button is disabled & shows “Processing Order…”
+  // Processing state: disables CTA and shows "Processing Order…"
   const [processing, setProcessing] = useState(false);
+
+  // ✅ Success state: after a successful order, hide CTA and show green check + message
+  const [orderSuccess, setOrderSuccess] = useState(false);
 
   // Reset when switching restaurants
   useEffect(() => {
@@ -40,6 +45,7 @@ export default function MenuScreen({ route }) {
     setError('');
     setConfirmOpen(false);
     setProcessing(false);
+    setOrderSuccess(false);
   }, [id]);
 
   useEffect(() => {
@@ -145,10 +151,12 @@ export default function MenuScreen({ route }) {
         throw new Error(msg);
       }
 
-      // Optional parse response
-      // const result = await res.json();
+      // Optional: const result = await res.json();
 
+      // Success UX
+      setOrderSuccess(true); // ✅ hide CTA and show success banner
       Alert.alert('Order Created', `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(subtotal)}`);
+
       // (Optional) reset quantities after successful order:
       const zero = {};
       Object.keys(qty).forEach((k) => (zero[k] = 0));
@@ -156,7 +164,7 @@ export default function MenuScreen({ route }) {
     } catch (e) {
       Alert.alert('Order Failed', String(e?.message || e || 'Unknown error'));
     } finally {
-      setProcessing(false); // Re-enable Create Order button
+      setProcessing(false); // allow future actions
     }
   };
 
@@ -186,25 +194,25 @@ export default function MenuScreen({ route }) {
         {/* Quantity controls (buttons only; no typing) */}
         <View style={styles.qtyBox}>
           <Pressable
-            style={[styles.qtyBtn, count === 0 && styles.qtyBtnDisabled]}
+            style={[styles.qtyBtn, (count === 0 || processing || orderSuccess) && styles.qtyBtnDisabled]}
             onPress={() => dec(item.id)}
-            disabled={count === 0 || processing}
+            disabled={count === 0 || processing || orderSuccess}
             accessibilityRole="button"
             accessibilityLabel={`Decrease ${item.name} quantity`}
           >
-            <Text style={[styles.qtyBtnText, count === 0 && styles.qtyBtnTextDisabled]}>−</Text>
+            <Text style={[styles.qtyBtnText, (count === 0 || processing || orderSuccess) && styles.qtyBtnTextDisabled]}>−</Text>
           </Pressable>
 
           <Text style={styles.qtyVal} accessibilityLabel={`Quantity for ${item.name}`}>{count}</Text>
 
           <Pressable
-            style={styles.qtyBtn}
+            style={[styles.qtyBtn, (processing || orderSuccess) && styles.qtyBtnDisabled]}
             onPress={() => inc(item.id)}
-            disabled={processing}
+            disabled={processing || orderSuccess}
             accessibilityRole="button"
             accessibilityLabel={`Increase ${item.name} quantity`}
           >
-            <Text style={styles.qtyBtnText}>+</Text>
+            <Text style={[styles.qtyBtnText, (processing || orderSuccess) && styles.qtyBtnTextDisabled]}>+</Text>
           </Pressable>
         </View>
 
@@ -235,26 +243,33 @@ export default function MenuScreen({ route }) {
         }
       />
 
-      {/* Footer summary + Create Order button */}
+      {/* Footer summary + CTA or Success Banner */}
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
           <Text style={styles.subtotalLabel}>Subtotal:</Text>
           <Text style={styles.subtotalValue}>{formatMoney(subtotal)}</Text>
         </View>
 
-        <Pressable
-          onPress={onCreateOrder}
-          disabled={!hasAnyItems || processing}
-          style={[styles.cta, (!hasAnyItems || processing) && styles.ctaDisabled]}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !hasAnyItems || processing }}
-          accessibilityLabel="Create Order"
-        >
-          {/* ✅ Change label when processing */}
-          <Text style={[styles.ctaText, (!hasAnyItems || processing) && styles.ctaTextDisabled]}>
-            {processing ? 'Processing Order…' : 'Create Order'}
-          </Text>
-        </Pressable>
+        {/* ✅ After success: hide button and show green check + message */}
+        {orderSuccess ? (
+          <View style={styles.successWrap} accessibilityRole="status" accessibilityLabel="Order successfully placed">
+            <FontAwesome name="check-circle" size={18} color="#16a34a" />
+            <Text style={styles.successText}>Order placed successfully!</Text>
+          </View>
+        ) : (
+          <Pressable
+            onPress={onCreateOrder}
+            disabled={!hasAnyItems || processing}
+            style={[styles.cta, (!hasAnyItems || processing) && styles.ctaDisabled]}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !hasAnyItems || processing }}
+            accessibilityLabel="Create Order"
+          >
+            <Text style={[styles.ctaText, (!hasAnyItems || processing) && styles.ctaTextDisabled]}>
+              {processing ? 'Processing Order…' : 'Create Order'}
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Order Confirmation Modal */}
@@ -375,6 +390,20 @@ const styles = StyleSheet.create({
   ctaDisabled: { backgroundColor: '#9bbbd0' },
   ctaText: { color: '#fff', fontWeight: '800' },
   ctaTextDisabled: { color: '#f1f5f9' },
+
+  // ✅ Success banner styles
+  successWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  successText: { color: '#065f46', fontWeight: '800' },
 
   // Modal
   modalBackdrop: {
