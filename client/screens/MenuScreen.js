@@ -1,4 +1,3 @@
-
 // client/screens/MenuScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, Modal, ScrollView, Image } from 'react-native';
@@ -35,8 +34,11 @@ export default function MenuScreen({ route }) {
   // Processing state: disables CTA and shows "Processing Order…"
   const [processing, setProcessing] = useState(false);
 
-  // ✅ Success state: after a successful order, hide CTA and show green check + message
+  // Success state: after a successful order, hide CTA and show green check + message
   const [orderSuccess, setOrderSuccess] = useState(false);
+
+  // ❗ Failure state/message shown inside the modal with red X
+  const [orderError, setOrderError] = useState('');
 
   // Reset when switching restaurants
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function MenuScreen({ route }) {
     setConfirmOpen(false);
     setProcessing(false);
     setOrderSuccess(false);
+    setOrderError('');
   }, [id]);
 
   useEffect(() => {
@@ -116,14 +119,15 @@ export default function MenuScreen({ route }) {
   };
 
   const onCreateOrder = () => {
-    if (!hasAnyItems || processing) return; // guard
+    if (!hasAnyItems || processing || orderSuccess) return; // guard
+    setOrderError(''); // clear any previous failure message
     setConfirmOpen(true);
   };
 
   const onConfirmOrder = async () => {
-    // Begin processing: disable Create Order button and change its text
+    // Keep modal open during processing so failures can show inside it
     setProcessing(true);
-    setConfirmOpen(false);
+    setOrderError('');
     try {
       // Build payload
       const items = selectedItems.map((it) => ({
@@ -151,10 +155,9 @@ export default function MenuScreen({ route }) {
         throw new Error(msg);
       }
 
-      // Optional: const result = await res.json();
-
       // Success UX
-      setOrderSuccess(true); // ✅ hide CTA and show success banner
+      setOrderSuccess(true); // hide CTA and show success banner in footer
+      setConfirmOpen(false); // close modal on success
       Alert.alert('Order Created', `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(subtotal)}`);
 
       // (Optional) reset quantities after successful order:
@@ -162,13 +165,17 @@ export default function MenuScreen({ route }) {
       Object.keys(qty).forEach((k) => (zero[k] = 0));
       setQty(zero);
     } catch (e) {
-      Alert.alert('Order Failed', String(e?.message || e || 'Unknown error'));
+      // ❌ Failure: show red X + message, re-enable "Confirm Order" button
+      setOrderError(e?.message ? `Order failed: ${e.message}` : 'Order failed. Please try again.');
     } finally {
-      setProcessing(false); // allow future actions
+      setProcessing(false); // allow trying again (if failed)
     }
   };
 
-  const onCancelOrder = () => setConfirmOpen(false);
+  const onCancelOrder = () => {
+    if (processing) return; // don't allow closing while processing
+    setConfirmOpen(false);
+  };
 
   if (menu === null) {
     return (
@@ -250,7 +257,6 @@ export default function MenuScreen({ route }) {
           <Text style={styles.subtotalValue}>{formatMoney(subtotal)}</Text>
         </View>
 
-        {/* ✅ After success: hide button and show green check + message */}
         {orderSuccess ? (
           <View style={styles.successWrap} accessibilityRole="status" accessibilityLabel="Order successfully placed">
             <FontAwesome name="check-circle" size={18} color="#16a34a" />
@@ -278,6 +284,14 @@ export default function MenuScreen({ route }) {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Confirm Your Order</Text>
             <Text style={styles.modalSubtitle}>{name ? `Restaurant: ${name}` : `Restaurant ID: ${id}`}</Text>
+
+            {/* ❌ Failure banner shows when an API error occurs */}
+            {!!orderError && (
+              <View style={styles.errorWrap} accessibilityRole="alert" accessibilityLabel="Order failed">
+                <FontAwesome name="times-circle" size={18} color="#b91c1c" />
+                <Text style={styles.errorText}>{orderError}</Text>
+              </View>
+            )}
 
             <View style={styles.modalListHeader}>
               <Text style={[styles.colName, styles.bold]}>Item</Text>
@@ -313,13 +327,15 @@ export default function MenuScreen({ route }) {
                 <Text style={styles.modalBtnText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalBtn, styles.modalConfirm]}
+                style={[styles.modalBtn, styles.modalConfirm, processing && styles.modalConfirmDisabled]}
                 onPress={onConfirmOrder}
                 disabled={processing}
                 accessibilityRole="button"
                 accessibilityLabel="Confirm Order"
               >
-                <Text style={[styles.modalBtnText, styles.modalConfirmText]}>Confirm Order</Text>
+                <Text style={[styles.modalBtnText, styles.modalConfirmText]}>
+                  {processing ? 'Processing…' : 'Confirm Order'}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -391,7 +407,7 @@ const styles = StyleSheet.create({
   ctaText: { color: '#fff', fontWeight: '800' },
   ctaTextDisabled: { color: '#f1f5f9' },
 
-  // ✅ Success banner styles
+  // Success banner styles
   successWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -404,6 +420,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   successText: { color: '#065f46', fontWeight: '800' },
+
+  // Failure banner in modal
+  errorWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  errorText: { color: '#7f1d1d', fontWeight: '800', flexShrink: 1 },
 
   // Modal
   modalBackdrop: {
@@ -440,4 +472,5 @@ const styles = StyleSheet.create({
   modalConfirm: { backgroundColor: '#0a65a0' },
   modalBtnText: { fontWeight: '800' },
   modalConfirmText: { color: '#fff' },
+  modalConfirmDisabled: { backgroundColor: '#9bbbd0', borderColor: '#9bbbd0' },
 });
