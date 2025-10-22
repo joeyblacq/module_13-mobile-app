@@ -1,23 +1,51 @@
 // client/screens/LoginScreen.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('erica.ger@gmail.com');
+  const [password, setPassword] = useState('password');
   // Requirement: show error ABOVE the Login button when creds are wrong
   const [error, setError] = useState('');
 
+  // This is a test useEffect with fetch to check the connection to backend
+  // Remove this after you successfully connect to your backend
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_NGROK_URL}/api/restaurants`);
+        const data = await response.json();
+        console.log('Backend connection test:', data);
+      } catch (err) {
+        console.error('Error connecting to backend:', err);
+      }
+    };
+    testConnection();
+  }, []);
+
   const handleLogin = async () => {
     // Mock auth (replace with your API later)
-    const validEmail = 'user@example.com';
-    const validPassword = 'password123';
+    const validEmail = 'erica.ger@gmail.com';
+    const validPassword = 'password';
 
+    // Here you will do a fetch() call to your backend for real authentication
+    // const response = await fetch(`${process.env.EXPO_PUBLIC_NGROK_URL}/api/auth`, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ email, password }),
+    // });
+    // const data = await response.json();
+    // if (data.token) { ... }
+
+    // I leave the rest to you.
+
+    // careful, this verification is already done in the backend, you wont need the if else statement.
     if (email.trim().toLowerCase() === validEmail && password === validPassword) {
       setError('');
       await AsyncStorage.setItem('auth_token', 'demo-token-123');
+      // Figure out how to navigate to Restaurant Stack screen after login, since homescreen should be removed.
       navigation.replace('Home');
     } else {
       setError('Invalid email or password.');

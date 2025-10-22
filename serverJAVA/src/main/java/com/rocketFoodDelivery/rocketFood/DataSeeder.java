@@ -50,7 +50,7 @@ public class DataSeeder {
         this.courierRepository = courierRepository;
     }
 
-    @PostConstruct
+    // @PostConstruct
     @Transactional
     public void seedData() {
         if (userRepository.count() > 0) {

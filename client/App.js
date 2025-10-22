@@ -19,6 +19,7 @@ const RestaurantsStack = createNativeStackNavigator();
 const OrdersStack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
+{/* This home screen isn't required. */}
 // Home tab stack (top header shown)
 function HomeStackScreen() {
   return (
@@ -63,6 +64,10 @@ function OrdersStackScreen() {
 function MainTabs() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
+      {/* This TabHome is unecessary.
+          The only tabs you want is the RestaurantStack and OrderHistoryStack.
+          Because at this moment, you have 3 tabs, you only need 2.
+      */}
       <Tabs.Screen
         name="TabHome"
         component={HomeStackScreen}

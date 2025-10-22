@@ -16,65 +16,67 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // @Autowired
+    // private JwtTokenFilter jwtTokenFilter;
+
     @Autowired
     UserRepository userRepository;
-
+    
     @Bean
-    public UserDetailsService userDetailsService() {
+    public UserDetailsService userDetailsService(){
         return new UserDetailsService() {
             @Override
             public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
                 return userRepository.findByEmail(username)
-                        .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found."));
+                        .orElseThrow(
+                                () -> new UsernameNotFoundException("User " + username + " not   found."));
             }
         };
     }
-
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
-    @SuppressWarnings({ "removal", "deprecation" })
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable();
-        http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
-        http.authorizeRequests()
-            .requestMatchers("/api/**").permitAll()
-                .requestMatchers("/api/auth").permitAll()
+    public SecurityFilterChain filterChain2(HttpSecurity http) throws Exception {
+        http
+            .csrf().disable()
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
+            .authorizeRequests()
+                .requestMatchers("/api/**").permitAll()  // Allow all API endpoints
                 .requestMatchers("/backoffice/**").permitAll()
-                .requestMatchers("/api/restaurants").permitAll()
-                .requestMatchers("/api/products").permitAll()
-                .requestMatchers("/api/orders").permitAll()
-                .requestMatchers("/api/orders/**").permitAll()
-                .requestMatchers("/api/restaurants/**").permitAll()
-                .requestMatchers("/api/account/**").permitAll()
-                .requestMatchers("/api/orders/*/status").permitAll()
-                .anyRequest().authenticated();
-        http.exceptionHandling()
+                // .anyRequest().authenticated()  // Comment this out to allow all requests
+                .anyRequest().permitAll()        // Allow everything
+            .and()
+            .exceptionHandling()
                 .authenticationEntryPoint(
-                        (request, response, ex) -> {
-                            response.sendError(
-                                    HttpServletResponse.SC_UNAUTHORIZED,
-                                    ex.getMessage()
-                            );
-                        }
+                    (request, response, ex) -> {
+                        response.sendError(
+                            HttpServletResponse.SC_UNAUTHORIZED,
+                            ex.getMessage()
+                        );
+                    }
                 );
-        // Remove or comment out the line below if you no longer use JwtTokenFilter
+        
+        // Comment out JWT filter to disable JWT authentication
         // http.addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
+        
         return http.build();
     }
 
-    @SuppressWarnings("deprecation")
+
+
     @Bean
-    public PasswordEncoder getPasswordEncoder() {
+    public PasswordEncoder getPasswordEncoder(){
         return NoOpPasswordEncoder.getInstance();
     }
 }
