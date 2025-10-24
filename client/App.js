@@ -8,28 +8,17 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { FontAwesome } from '@expo/vector-icons';
 
 import LoginScreen from './screens/LoginScreen';
-import HomeScreen from './screens/HomeScreen';
 import RestaurantsScreen from './screens/RestaurantsScreen';
 import MenuScreen from './screens/MenuScreen';
 import OrderHistoryScreen from './screens/OrderHistoryScreen';
 
+// Initialize navigators
 const RootStack = createNativeStackNavigator();
-const HomeStack = createNativeStackNavigator();
 const RestaurantsStack = createNativeStackNavigator();
 const OrdersStack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
-{/* This home screen isn't required. */}
-// Home tab stack (top header shown)
-function HomeStackScreen() {
-  return (
-    <HomeStack.Navigator>
-      <HomeStack.Screen name="Home" component={HomeScreen} options={{ headerTitle: 'Home' }} />
-    </HomeStack.Navigator>
-  );
-}
-
-// Restaurants tab stack (top header shown). Menu lives inside this stack.
+// Restaurants tab stack: Handles navigation from Restaurants list to the Menu screen.
 function RestaurantsStackScreen() {
   return (
     <RestaurantsStack.Navigator>
@@ -47,7 +36,7 @@ function RestaurantsStackScreen() {
   );
 }
 
-// Orders tab stack (top header shown)
+// Orders tab stack: A simple stack for the Order History screen.
 function OrdersStackScreen() {
   return (
     <OrdersStack.Navigator>
@@ -60,22 +49,12 @@ function OrdersStackScreen() {
   );
 }
 
-// Bottom tabs (footer) across the app (except Login)
+// Bottom tabs (footer) across the main application after login.
+// This now contains only the two essential screens: Restaurants and Orders.
 function MainTabs() {
   return (
+    // headerShown: false is essential here so that the inner stacks' headers are shown instead.
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
-      {/* This TabHome is unecessary.
-          The only tabs you want is the RestaurantStack and OrderHistoryStack.
-          Because at this moment, you have 3 tabs, you only need 2.
-      */}
-      <Tabs.Screen
-        name="TabHome"
-        component={HomeStackScreen}
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => <FontAwesome name="home" color={color} size={size} />,
-        }}
-      />
       <Tabs.Screen
         name="TabRestaurants"
         component={RestaurantsStackScreen}
@@ -97,20 +76,24 @@ function MainTabs() {
 }
 
 export default function App() {
+  // State to determine the initial screen based on authentication status.
   const [initialRoute, setInitialRoute] = useState(null); // 'Login' | 'Main'
 
   useEffect(() => {
+    // Check local storage for an existing authentication token.
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem('auth_token');
         setInitialRoute(token ? 'Main' : 'Login');
       } catch {
+        // Default to Login if AsyncStorage fails.
         setInitialRoute('Login');
       }
     };
     checkAuth();
   }, []);
 
+  // Show a loading indicator while checking for the auth token.
   if (!initialRoute) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -121,10 +104,11 @@ export default function App() {
 
   return (
     <NavigationContainer>
+      {/* Root navigator handles the two primary app states: Login or Main content. */}
       <RootStack.Navigator initialRouteName={initialRoute}>
-        {/* Login page: NO header, NO footer */}
+        {/* Login screen: No header, no footer tabs. */}
         <RootStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        {/* Main app: header from inner stacks, footer = bottom tabs */}
+        {/* Main app: This screen shows the bottom tabs (MainTabs). */}
         <RootStack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
       </RootStack.Navigator>
     </NavigationContainer>
