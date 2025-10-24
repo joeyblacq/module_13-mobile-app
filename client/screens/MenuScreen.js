@@ -4,7 +4,8 @@ import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, 
 import { FontAwesome } from '@expo/vector-icons';
 
 // TODO: point to your backend base URL
-const BASE_URL = 'http://localhost:8080';
+// const BASE_URL = 'http://localhost:8080';
+const BASE_URL = `${process.env.EXPO_PUBLIC_NGROK_URL}`;
 
 // Shared menu image for ALL restaurants
 const MENU_HERO = require('../assets/RestaurantMenu.jpg');
