@@ -8,7 +8,7 @@ import { FontAwesome } from '@expo/vector-icons';
 const BASE_URL = `${process.env.EXPO_PUBLIC_NGROK_URL}`;
 
 // Shared menu image for ALL restaurants
-const MENU_HERO = require('../assets/RestaurantMenu.jpg');
+import MENU_HERO from '../assets/Images/RestaurantMenu.jpg';
 
 // Format numbers as $X.YY
 const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
