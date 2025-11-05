@@ -7,8 +7,8 @@ import { FontAwesome } from '@expo/vector-icons';
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL; // e.g., https://xxxx.ngrok.io
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('erica.ger@gmail.com');
+  const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,7 +26,7 @@ export default function LoginScreen({ navigation }) {
 
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE}/api/auth/login`, {
+      const response = await fetch(`${API_BASE}/api/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
@@ -40,14 +40,14 @@ export default function LoginScreen({ navigation }) {
       }
 
       const data = await response.json();
-      const token = data?.token;
-      if (!token) {
-        setError('Invalid server response.');
-        setSubmitting(false);
-        return;
-      }
+      // const token = data?.token;
+      // if (!token) {
+      //   setError('Invalid server response.');
+      //   setSubmitting(false);
+      //   return;
+      // }
 
-      await AsyncStorage.setItem('auth_token', token);
+      // await AsyncStorage.setItem('auth_token', token);
 
       // Home was removed; enter the main tab navigator.
       navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
