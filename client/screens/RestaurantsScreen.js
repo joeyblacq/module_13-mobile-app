@@ -4,8 +4,44 @@ import { View, Text, ActivityIndicator, FlatList, StyleSheet, Image, Pressable }
 import { FontAwesome } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 
-// TODO: point to your backend host:port
+// TODO: point to your backend host:port or use EXPO_PUBLIC_NGROK_URL
 const BASE_URL = 'http://localhost:8080';
+
+// 🔹 LOCAL IMAGE MAP
+// Folder: client/assets/Images/Restaurants/
+// Keys are restaurant names without spaces, all lowercase.
+const restaurantImages = {
+  rocketpizza: require('../assets/Images/Restaurants/cuisinePizza.jpg'),
+  galaxyburgers: require('../assets/Images/Restaurants/cuisineGreek.jpg'),
+  orbitsushi: require('../assets/Images/Restaurants/cuisineJapanese.jpg'),
+  comettacos: require('../assets/Images/Restaurants/cuisineSoutheast.jpg'),
+  nebulanoodles: require('../assets/Images/Restaurants/cuisinePasta.jpg'),
+  vietkitchen: require('../assets/Images/Restaurants/cuisineViet.jpg'),
+  // add more mappings if you add more restaurants
+};
+
+// 🔹 DEFAULT FALLBACK IMAGE
+// If a restaurant name doesn't match any key above, this one is used.
+const defaultRestaurantImage = require('../assets/Images/RestaurantMenu.jpg');
+
+// 🔹 NORMALIZER FUNCTION
+function normalizeRestaurant(r, index) {
+  const name = r.name ?? 'Unnamed';
+  const nameKey = name.toLowerCase().replace(/\s+/g, ''); // "Rocket Pizza" → "rocketpizza"
+
+  return {
+    id: r.id ?? index + 1,
+    name,
+    email: r.email ?? '—',
+    phone: r.phone ?? '—',
+    price_range: r.price_range ?? r.priceRange ?? null,
+    active: typeof r.active === 'boolean' ? r.active : true,
+    rating: r.rating ?? r.stars ?? 0,
+
+    // Local image chosen by name; fallback if not found
+    image: restaurantImages[nameKey] || defaultRestaurantImage,
+  };
+}
 
 export default function RestaurantsScreen({ navigation }) {
   const [restaurants, setRestaurants] = useState(null); // null=loading
@@ -22,29 +58,60 @@ export default function RestaurantsScreen({ navigation }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const normalized = (Array.isArray(data) ? data : []).map((r, i) => ({
-          id: r.id ?? i + 1,
-          name: r.name ?? 'Unnamed',
-          email: r.email ?? '—',
-          phone: r.phone ?? '—',
-          price_range: r.price_range ?? r.priceRange ?? null,
-          active: typeof r.active === 'boolean' ? r.active : true,
-          rating: r.rating ?? r.stars ?? 0,
-          image_url:
-            r.image_url ??
-            r.imageUrl ??
-            // fallback placeholder
-            `https://picsum.photos/seed/restaurant_${(r.id ?? i + 1) % 200}/640/360`,
-        }));
+        const normalized = (Array.isArray(data) ? data : []).map((r, i) =>
+          normalizeRestaurant(r, i),
+        );
         setRestaurants(normalized);
       } catch {
-        setRestaurants([
-          { id: 1, name: 'Rocket Pizza',   price_range: 2, email: 'pizza@rocket.com',   phone: '555-1111', active: true,  rating: 4.5, image_url: 'https://picsum.photos/seed/rocketpizza/640/360' },
-          { id: 2, name: 'Galaxy Burgers', price_range: 1, email: 'burgers@rocket.com', phone: '555-2222', active: true,  rating: 3.2, image_url: 'https://picsum.photos/seed/galaxyburgers/640/360' },
-          { id: 3, name: 'Orbit Sushi',    price_range: 3, email: 'sushi@rocket.com',   phone: '555-3333', active: false, rating: 4.9, image_url: 'https://picsum.photos/seed/orbitsushi/640/360' },
-          { id: 4, name: 'Comet Tacos',    price_range: 1, email: 'tacos@rocket.com',   phone: '555-4444', active: true,  rating: 2.8, image_url: 'https://picsum.photos/seed/comettacos/640/360' },
-          { id: 5, name: 'Nebula Noodles', price_range: 4, email: 'noodles@rocket.com', phone: '555-5555', active: true,  rating: 5.0, image_url: 'https://picsum.photos/seed/nebula/640/360' },
-        ]);
+        // If API fails, use mock data but still normalize it
+        const mockData = [
+          {
+            id: 1,
+            name: 'Rocket Pizza',
+            price_range: 2,
+            email: 'pizza@rocket.com',
+            phone: '555-1111',
+            active: true,
+            rating: 4.5,
+          },
+          {
+            id: 2,
+            name: 'Galaxy Burgers',
+            price_range: 1,
+            email: 'burgers@rocket.com',
+            phone: '555-2222',
+            active: true,
+            rating: 3.2,
+          },
+          {
+            id: 3,
+            name: 'Orbit Sushi',
+            price_range: 3,
+            email: 'sushi@rocket.com',
+            phone: '555-3333',
+            active: false,
+            rating: 4.9,
+          },
+          {
+            id: 4,
+            name: 'Comet Tacos',
+            price_range: 1,
+            email: 'tacos@rocket.com',
+            phone: '555-4444',
+            active: true,
+            rating: 2.8,
+          },
+          {
+            id: 5,
+            name: 'Nebula Noodles',
+            price_range: 4,
+            email: 'noodles@rocket.com',
+            phone: '555-5555',
+            active: true,
+            rating: 5.0,
+          },
+        ];
+        setRestaurants(mockData.map((r, i) => normalizeRestaurant(r, i)));
         setError('Using mock data (API fetch failed).');
       }
     };
@@ -54,8 +121,10 @@ export default function RestaurantsScreen({ navigation }) {
   const filtered = useMemo(() => {
     if (!Array.isArray(restaurants)) return [];
     return restaurants.filter((r) => {
-      const okRating = ratingFilter == null ? true : (Number(r.rating) || 0) >= ratingFilter;
-      const okPrice  = priceFilter  == null ? true : Number(r.price_range) === Number(priceFilter);
+      const okRating =
+        ratingFilter == null ? true : (Number(r.rating) || 0) >= ratingFilter;
+      const okPrice =
+        priceFilter == null ? true : Number(r.price_range) === Number(priceFilter);
       return okRating && okPrice;
     });
   }, [restaurants, ratingFilter, priceFilter]);
@@ -77,9 +146,14 @@ export default function RestaurantsScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       {/* Clicking the image redirects to the restaurant’s menu */}
-      <Pressable onPress={() => onOpenMenu(item)} accessible accessibilityRole="imagebutton" accessibilityLabel={`Open ${item.name} menu`}>
+      <Pressable
+        onPress={() => onOpenMenu(item)}
+        accessible
+        accessibilityRole="imagebutton"
+        accessibilityLabel={`Open ${item.name} menu`}
+      >
         <Image
-          source={{ uri: item.image_url }}
+          source={item.image} // local or fallback image
           style={styles.image}
           resizeMode="cover"
         />
@@ -90,7 +164,9 @@ export default function RestaurantsScreen({ navigation }) {
         <View style={styles.badgeRow}>
           <View style={styles.badge}>
             <FontAwesome name="star" />
-            <Text style={styles.badgeText}>{(item.rating ?? 0).toFixed(1)}</Text>
+            <Text style={styles.badgeText}>
+              {(item.rating ?? 0).toFixed(1)}
+            </Text>
           </View>
           <View style={styles.badge}>
             <FontAwesome name="dollar" />
@@ -108,9 +184,16 @@ export default function RestaurantsScreen({ navigation }) {
         <Text style={styles.mono}>{item.phone ?? '—'}</Text>
       </View>
 
-      <View style={[styles.status, item.active ? styles.active : styles.inactive]}>
+      <View
+        style={[
+          styles.status,
+          item.active ? styles.active : styles.inactive,
+        ]}
+      >
         <FontAwesome name={item.active ? 'check' : 'close'} />
-        <Text style={styles.statusText}>{item.active ? 'Active' : 'Inactive'}</Text>
+        <Text style={styles.statusText}>
+          {item.active ? 'Active' : 'Inactive'}
+        </Text>
       </View>
     </View>
   );
@@ -124,7 +207,10 @@ export default function RestaurantsScreen({ navigation }) {
         <View style={styles.filterField}>
           <Text style={styles.filterLabel}>Rating</Text>
           <View style={styles.pickerWrapper}>
-            <Picker selectedValue={ratingFilter} onValueChange={(v) => setRatingFilter(v)}>
+            <Picker
+              selectedValue={ratingFilter}
+              onValueChange={(v) => setRatingFilter(v)}
+            >
               <Picker.Item label="Rating (all)" value={null} />
               <Picker.Item label="≥ 5.0" value={5} />
               <Picker.Item label="≥ 4.5" value={4.5} />
@@ -139,7 +225,10 @@ export default function RestaurantsScreen({ navigation }) {
         <View style={styles.filterField}>
           <Text style={styles.filterLabel}>Price</Text>
           <View style={styles.pickerWrapper}>
-            <Picker selectedValue={priceFilter} onValueChange={(v) => setPriceFilter(v)}>
+            <Picker
+              selectedValue={priceFilter}
+              onValueChange={(v) => setPriceFilter(v)}
+            >
               <Picker.Item label="Price (all)" value={null} />
               <Picker.Item label="$ (1)" value={1} />
               <Picker.Item label="$$ (2)" value={2} />
@@ -167,12 +256,27 @@ export default function RestaurantsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  warn: { color: '#8a6d3b', backgroundColor: '#fcf8e3', padding: 8, textAlign: 'center' },
+  warn: {
+    color: '#8a6d3b',
+    backgroundColor: '#fcf8e3',
+    padding: 8,
+    textAlign: 'center',
+  },
 
-  filters: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingTop: 10 },
+  filters: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
   filterField: { flex: 1 },
   filterLabel: { fontWeight: '700', marginBottom: 4 },
-  pickerWrapper: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, overflow: 'hidden' },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
 
   card: {
     backgroundColor: '#fff',
@@ -186,19 +290,45 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  image: { width: '100%', height: 160, borderRadius: 10, marginBottom: 10, backgroundColor: '#f2f2f2' },
+  image: {
+    width: '100%',
+    height: 160,
+    borderRadius: 10,
+    marginBottom: 10,
+    backgroundColor: '#f2f2f2',
+  },
 
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
   name: { fontSize: 18, fontWeight: '700' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#f1f5f9' },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#f1f5f9',
+  },
   badgeText: { marginLeft: 6, fontWeight: '600' },
 
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   icon: { marginRight: 8 },
   mono: { fontFamily: 'System' },
 
-  status: { marginTop: 8, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  status: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
   active: { backgroundColor: '#e6f4ea' },
   inactive: { backgroundColor: '#fdecea' },
   statusText: { marginLeft: 6, fontWeight: '600' },
