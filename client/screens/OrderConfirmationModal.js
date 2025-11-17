@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Modal } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import OrderConfirmationModal from '../screens/OrderConfirmationModal';
+
 
 const OrderConfirmationModal = ({ visible, orderItems = [], restaurantId, customerId, onClose, onOrderCreated }) => {
   const [orderStatus, setOrderStatus] = useState('idle'); // 'idle', 'processing', 'success', 'failure'
