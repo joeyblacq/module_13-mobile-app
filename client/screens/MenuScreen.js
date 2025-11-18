@@ -5,8 +5,6 @@ import { FontAwesome } from '@expo/vector-icons';
 import OrderConfirmationModal from './OrderConfirmationModal';
 import OrderDetailModal from './OrderDetailModal';
 
-
-
 const BASE_URL = `${process.env.EXPO_PUBLIC_NGROK_URL}`;
 import MENU_HERO from '../assets/Images/RestaurantMenu.jpg';
 
@@ -111,13 +109,12 @@ export default function MenuScreen({ route }) {
   const onConfirmOrder = async () => {
     setProcessing(true);
     setOrderError('');
+
     try {
       const items = selectedItems.map((it) => ({
-        id: it.id,
-        name: it.name,
-        qty: it.qty,
+        productId: it.id,
+        quantity: it.qty,
         price: it.price,
-        total: it.qty * (it.price || 0),
       }));
 
       const res = await fetch(`${BASE_URL}/api/orders`, {
@@ -125,23 +122,27 @@ export default function MenuScreen({ route }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           restaurantId: id,
-          restaurantName: name ?? null,
+          customerId: 1,
           items,
-          subtotal,
+          totalAmount: subtotal,
         }),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error('Order request failed');
 
       setOrderSuccess(true);
       setConfirmOpen(false);
-      Alert.alert('Order Created', `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(subtotal)}`);
 
-      const zero = {};
-      Object.keys(qty).forEach((k) => (zero[k] = 0));
-      setQty(zero);
+      Alert.alert(
+        'Order Created',
+        `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(subtotal)}`
+      );
+
+      const reset = {};
+      Object.keys(qty).forEach((k) => (reset[k] = 0));
+      setQty(reset);
     } catch (e) {
-      setOrderError(e?.message ? `Order failed: ${e.message}` : 'Order failed. Please try again.');
+      setOrderError('Order failed. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -161,6 +162,7 @@ export default function MenuScreen({ route }) {
           {item.desc ? <Text style={styles.itemDesc}>{item.desc}</Text> : null}
           <Text style={styles.itemPrice}>{formatMoney(item.price)}</Text>
         </View>
+
         <View style={styles.qtyBox}>
           <Pressable
             style={[styles.qtyBtn, (count === 0 || processing || orderSuccess) && styles.qtyBtnDisabled]}
@@ -169,7 +171,9 @@ export default function MenuScreen({ route }) {
           >
             <Text style={[styles.qtyBtnText, (count === 0 || processing || orderSuccess) && styles.qtyBtnTextDisabled]}>−</Text>
           </Pressable>
+
           <Text style={styles.qtyVal}>{count}</Text>
+
           <Pressable
             style={[styles.qtyBtn, (processing || orderSuccess) && styles.qtyBtnDisabled]}
             onPress={() => inc(item.id)}
@@ -178,6 +182,7 @@ export default function MenuScreen({ route }) {
             <Text style={[styles.qtyBtnText, (processing || orderSuccess) && styles.qtyBtnTextDisabled]}>+</Text>
           </Pressable>
         </View>
+
         <View style={styles.lineTotal}>
           <Text style={styles.lineTotalText}>{formatMoney(lineTotal)}</Text>
         </View>
@@ -188,7 +193,9 @@ export default function MenuScreen({ route }) {
   return (
     <View style={{ flex: 1 }}>
       {error ? <Text style={styles.warn}>{error}</Text> : null}
+
       <Image source={MENU_HERO} style={styles.menuImage} resizeMode="cover" />
+
       <FlatList
         data={menu}
         keyExtractor={(item) => String(item.id)}
@@ -197,11 +204,13 @@ export default function MenuScreen({ route }) {
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListEmptyComponent={<View style={styles.center}><Text>No menu items found.</Text></View>}
       />
+
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
           <Text style={styles.subtotalLabel}>Subtotal:</Text>
           <Text style={styles.subtotalValue}>{formatMoney(subtotal)}</Text>
         </View>
+
         {orderSuccess ? (
           <View style={styles.successWrap}>
             <FontAwesome name="check-circle" size={18} color="#16a34a" />
@@ -219,11 +228,12 @@ export default function MenuScreen({ route }) {
           </Pressable>
         )}
       </View>
+
       <OrderConfirmationModal
         visible={confirmOpen}
         orderItems={selectedItems}
         restaurantId={id}
-        customerId={1} // Placeholder; replace with dynamic user ID
+        customerId={1}
         subtotal={subtotal}
         processing={processing}
         errorMessage={orderError}
