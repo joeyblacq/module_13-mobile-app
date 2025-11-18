@@ -2,7 +2,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, ScrollView, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import OrderConfirmationModal from '../modals/OrderConfirmationModal';
+import OrderConfirmationModal from './OrderConfirmationModal';
+import OrderDetailModal from './OrderDetailModal';
+
+
 
 const BASE_URL = `${process.env.EXPO_PUBLIC_NGROK_URL}`;
 import MENU_HERO from '../assets/Images/RestaurantMenu.jpg';
