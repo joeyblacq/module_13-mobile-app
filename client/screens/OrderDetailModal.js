@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { View, Text, Button, StyleSheet, ScrollView, Modal } from 'react-native';
 import OrderConfirmationModal from './OrderConfirmationModal';
 
+
+
 const OrderDetailModal = ({ visible, onClose, orderItems, restaurantId, customerId }) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const totalPrice = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
