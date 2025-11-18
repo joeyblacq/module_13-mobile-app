@@ -1,80 +1,72 @@
-// client/components/OrderConfirmationModal.js
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Modal } from 'react-native';
+// client/screens/OrderConfirmationModal.js
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import OrderDetailModal from './OrderDetailModal';
 
+const formatCurrency = (amount) => '$' + Number(amount || 0).toFixed(2);
 
-
-const OrderConfirmationModal = ({ visible, orderItems = [], restaurantId, customerId, onClose, onOrderCreated }) => {
-  const [orderStatus, setOrderStatus] = useState('idle'); // 'idle', 'processing', 'success', 'failure'
-
-  const totalPrice = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-  const formatCurrency = (amount) => '$' + Number(amount).toFixed(2);
-
-  const handleConfirmOrder = async () => {
-    setOrderStatus('processing');
-    try {
-      const orderData = {
-        restaurantId,
-        customerId,
-        items: orderItems.map(item => ({  
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.price
-        }))
-      };
-
-      const response = await fetch(`${process.env.EXPO_PUBLIC_NGROK_URL}/api/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData)
-      });
-
-      if (!response.ok) throw new Error('Order failed');
-      const order = await response.json();
-
-      setOrderStatus('success');
-      if (onOrderCreated) onOrderCreated(order);
-      setTimeout(onClose, 1500);
-    } catch (err) {
-      setOrderStatus('failure');
-    }
-  };
-
+const OrderConfirmationModal = ({
+  visible,
+  orderItems = [],
+  subtotal = 0,
+  processing = false,
+  errorMessage = '',
+  onClose,
+  onConfirm,
+}) => {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.card}>
           <Text style={styles.title}>Confirm Order</Text>
-          <ScrollView style={{ maxHeight: 240 }}>
-            {orderItems.map((item) => (
-              <View key={item.id} style={styles.row}>
-                <Text style={styles.itemText}>{item.name} × {item.quantity}</Text>
-                <Text style={styles.priceText}>{formatCurrency(item.price * item.quantity)}</Text>
-              </View>
-            ))}
-          </ScrollView>
-          <Text style={styles.total}>Total: {formatCurrency(totalPrice)}</Text>
 
-          {orderStatus === 'failure' && (
+          <ScrollView style={{ maxHeight: 240 }}>
+            {orderItems.map((item) => {
+              const quantity = item.qty || 0;
+              const lineTotal = (item.price || 0) * quantity;
+
+              return (
+                <View key={String(item.id)} style={styles.row}>
+                  <Text style={styles.itemText}>
+                    {item.name} × {quantity}
+                  </Text>
+                  <Text style={styles.priceText}>{formatCurrency(lineTotal)}</Text>
+                </View>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={styles.total}>Total: {formatCurrency(subtotal)}</Text>
+
+          {!!errorMessage && (
             <View style={styles.errorRow}>
               <FontAwesome name="times-circle" size={18} color="#b91c1c" />
-              <Text style={styles.errorText}>Order failed. Try again.</Text>
+              <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           )}
 
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={orderStatus === 'processing'}>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={onClose}
+              disabled={processing}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.confirmBtn}
-              onPress={handleConfirmOrder}
-              disabled={orderStatus === 'processing'}
+              style={[styles.confirmBtn, processing && styles.confirmBtnDisabled]}
+              onPress={onConfirm}
+              disabled={processing}
             >
-              {orderStatus === 'processing' ? (
+              {processing ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.confirmText}>Confirm</Text>
@@ -112,8 +104,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginVertical: 4,
   },
-  itemText: { fontWeight: '600' },
-  priceText: { fontWeight: '600' },
+  itemText: {
+    fontWeight: '600',
+  },
+  priceText: {
+    fontWeight: '600',
+  },
   total: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -149,6 +145,9 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     backgroundColor: '#0a65a0',
+  },
+  confirmBtnDisabled: {
+    opacity: 0.6,
   },
   confirmText: {
     color: '#fff',
