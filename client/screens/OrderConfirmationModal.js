@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, StyleSheet, Modal } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import OrderConfirmationModal from '../screens/OrderConfirmationModal';
+import OrderDetailModal from './OrderDetailModal';
+
 
 
 const OrderConfirmationModal = ({ visible, orderItems = [], restaurantId, customerId, onClose, onOrderCreated }) => {
@@ -18,7 +19,7 @@ const OrderConfirmationModal = ({ visible, orderItems = [], restaurantId, custom
       const orderData = {
         restaurantId,
         customerId,
-        items: orderItems.map(item => ({
+        items: orderItems.map(item => ({  
           productId: item.id,
           quantity: item.quantity,
           price: item.price
