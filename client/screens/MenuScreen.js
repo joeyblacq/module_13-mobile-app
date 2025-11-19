@@ -39,7 +39,7 @@ export default function MenuScreen({ route }) {
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const res = await fetch(`${BASE_URL}/api/restaurants/${id}/menu`);
+        const res = await fetch(`${BASE_URL}/api/products?restaurant=${id}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const items = Array.isArray(data) ? data : [];
@@ -48,7 +48,7 @@ export default function MenuScreen({ route }) {
           id: it.id ?? `m-${id}-${idx + 1}`,
           name: it.name ?? `Item ${idx + 1}`,
           desc: it.desc ?? it.description ?? '',
-          price: normalizePrice(it.price),
+          price: normalizePrice(it.cost),
         }));
 
         setMenu(normalized);
@@ -112,19 +112,19 @@ export default function MenuScreen({ route }) {
 
     try {
       const items = selectedItems.map((it) => ({
-        productId: it.id,
+        id: it.id,
         quantity: it.qty,
-        price: it.price,
+        // price: it.price,
       }));
 
       const res = await fetch(`${BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          restaurantId: id,
-          customerId: 1,
-          items,
-          totalAmount: subtotal,
+          restaurant_id: id,
+          customer_id: 1,
+          products:items,
+          // totalAmount: subtotal,
         }),
       });
 
