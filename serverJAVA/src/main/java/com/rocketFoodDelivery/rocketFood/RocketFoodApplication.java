@@ -8,3 +8,4 @@ public class RocketFoodApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(RocketFoodApplication.class, args);
 	}
+}
