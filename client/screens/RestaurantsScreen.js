@@ -58,7 +58,7 @@ export default function RestaurantsScreen({ navigation }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const normalized = (Array.isArray(data) ? data : []).map((r, i) =>
+        const normalized = (Array.isArray(data.data) ? data.data : []).map((r, i) =>
           normalizeRestaurant(r, i),
         );
         setRestaurants(normalized);
