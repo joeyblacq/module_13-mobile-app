@@ -1,10 +1,20 @@
 // client/screens/LoginScreen.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FontAwesome } from '@expo/vector-icons';
 
-const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL; // e.g., https://xxxx.ngrok.io
+const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('erica.ger@gmail.com');
@@ -14,9 +24,8 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     setError('');
-
     if (!API_BASE) {
-      setError('Missing API base URL. Set EXPO_PUBLIC_NGROK_URL.');
+      setError('Missing API base URL.');
       return;
     }
     if (!email.trim() || !password) {
@@ -32,24 +41,12 @@ export default function LoginScreen({ navigation }) {
         body: JSON.stringify({ email: email.trim(), password }),
       });
 
-      // Backend performs the verification; client trusts the response.
       if (!response.ok) {
         setError('Invalid email or password.');
         setSubmitting(false);
         return;
       }
 
-      const data = await response.json();
-      // const token = data?.token;
-      // if (!token) {
-      //   setError('Invalid server response.');
-      //   setSubmitting(false);
-      //   return;
-      // }
-
-      // await AsyncStorage.setItem('auth_token', token);
-
-      // Home was removed; enter the main tab navigator.
       navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
     } catch {
       setError('Unable to reach server. Please try again.');
@@ -58,66 +55,124 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sign In</Text>
-
-      <View style={styles.inputGroup}>
-        <FontAwesome name="envelope" size={18} style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-          autoCorrect={false}
-          textContentType="username"
-        />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <FontAwesome name="lock" size={20} style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          textContentType="password"
-        />
-      </View>
-
-      {/* Error message ABOVE the button per requirement */}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <Pressable
-        style={[styles.button, submitting && styles.buttonDisabled]}
-        onPress={handleLogin}
-        disabled={submitting}
-        accessibilityRole="button"
-        accessibilityLabel="Login"
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        style={styles.wrapper}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={styles.buttonText}>
-          {submitting ? 'Signing in…' : 'Login'}
-        </Text>
-      </Pressable>
-    </View>
+        <View style={styles.container}>
+          
+          {/* Rocket Logo */}
+          <Image
+            source={require('../assets/Images/rocket_logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+
+          {/* White Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Welcome Back</Text>
+            <Text style={styles.cardSubtitle}>Login to begin</Text>
+
+            {/* Email */}
+            <Text style={styles.inputLabel}>Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your primary email here"
+              placeholderTextColor="#777"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+
+            {/* Password */}
+            <Text style={styles.inputLabel}>Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="************"
+              placeholderTextColor="#777"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+
+            {/* Error */}
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {/* Login Button */}
+            <Pressable
+              style={[styles.button, submitting && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={submitting}
+            >
+              <Text style={styles.buttonText}>
+                {submitting ? 'Logging in...' : 'LOG IN'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20, justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: '700', marginBottom: 24, textAlign: 'center' },
-
-  inputGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
-    paddingHorizontal: 12, marginBottom: 14, height: 50,
-    backgroundColor: '#fff',
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#f5f5f5', // light gray from wireframe
   },
-  icon: { marginRight: 8 },
-  input: { flex: 1, fontSize: 16 },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  logo: {
+    width: 220,
+    height: 110,
+    marginBottom: 20,
+  },
+
+  card: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 20,
+  },
+
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+
+  input: {
+    height: 46,
+    borderWidth: 1,
+    borderColor: '#D3D3D3',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    marginBottom: 14,
+  },
 
   errorText: {
     color: '#b00020',
@@ -127,13 +182,19 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: '#0a65a0',
-    height: 50, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+    backgroundColor: '#D86F52', // orange from wireframe
+    height: 48,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
   },
   buttonDisabled: {
-    opacity: 0.65,
+    opacity: 0.7,
   },
-  buttonText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
 });
