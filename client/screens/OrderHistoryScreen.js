@@ -8,13 +8,14 @@ import {
   Pressable,
   ActivityIndicator,
   Modal,
-  ScrollView,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'react-native';
 
 const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
 
-export default function OrderHistoryScreen() {
+export default function OrderHistoryScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -23,11 +24,13 @@ export default function OrderHistoryScreen() {
   useEffect(() => {
     const loadOrders = async () => {
       try {
+        // fake loading to simulate API
         await new Promise((r) => setTimeout(r, 350));
         setOrders([
           {
             id: 'ORD-1001',
-            status: 'Delivered',
+            restaurant: 'Sweet Dragon',
+            status: 'PENDING',
             date: '2025-10-12 11:45 AM',
             courier: 'Imedi Swift',
             items: [
@@ -37,7 +40,8 @@ export default function OrderHistoryScreen() {
           },
           {
             id: 'ORD-1002',
-            status: 'Preparing',
+            restaurant: 'Spice BBQ',
+            status: 'PENDING',
             date: '2025-10-17 03:22 PM',
             courier: 'SpeedyDash Logistics',
             items: [
@@ -47,7 +51,8 @@ export default function OrderHistoryScreen() {
           },
           {
             id: 'ORD-1003',
-            status: 'Cancelled',
+            restaurant: 'Golden Bar & Grill',
+            status: 'PENDING',
             date: '2025-10-19 09:10 AM',
             courier: 'N/A',
             items: [{ name: 'Tiramisu', qty: 3, price: 5.99 }],
@@ -60,6 +65,15 @@ export default function OrderHistoryScreen() {
     loadOrders();
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('auth_token');
+    } catch (e) {
+      // ignore storage errors
+    }
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
   const openDetails = (order) => {
     setSelectedOrder(order);
     setDetailOpen(true);
@@ -70,24 +84,31 @@ export default function OrderHistoryScreen() {
     setSelectedOrder(null);
   };
 
-  const Header = () => (
+  const orderSubtotal = (order) =>
+    (order?.items || []).reduce(
+      (sum, it) => sum + (it.qty || 0) * (it.price || 0),
+      0
+    );
+
+  const HeaderRow = () => (
     <View style={[styles.row, styles.headerRow]}>
-      <Text style={[styles.cellOrder, styles.headerText]}>Order</Text>
-      <Text style={[styles.cellStatus, styles.headerText]}>Status</Text>
-      <Text style={[styles.cellView, styles.headerText]}>View</Text>
+      <Text style={[styles.cellOrder, styles.headerText]}>ORDER</Text>
+      <Text style={[styles.cellStatus, styles.headerText]}>STATUS</Text>
+      <Text style={[styles.cellView, styles.headerText]}>VIEW</Text>
     </View>
   );
 
   const Row = ({ item }) => (
-    <View style={styles.row}>
-      <Text style={styles.cellOrder}>{item.id}</Text>
+    <View style={[styles.row, styles.dataRow]}>
+      <Text style={styles.cellOrder}>{item.restaurant}</Text>
+
       <Text style={[styles.cellStatus, styles.statusText(item.status)]}>
         {item.status}
       </Text>
+
       <View style={styles.cellView}>
-        <Pressable style={styles.viewIconBtn} onPress={() => openDetails(item)}>
-          <FontAwesome name="eye" size={18} color="#0a65a0" />
-          <Text style={styles.viewIconText}>View</Text>
+        <Pressable onPress={() => openDetails(item)} style={styles.iconButton}>
+          <FontAwesome name="search" size={16} color="#111827" />
         </Pressable>
       </View>
     </View>
@@ -102,77 +123,94 @@ export default function OrderHistoryScreen() {
     );
   }
 
-  const orderSubtotal = (order) =>
-    (order?.items || []).reduce(
-      (sum, it) => sum + (it.qty || 0) * (it.price || 0),
-      0
-    );
-
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={orders}
-        keyExtractor={(o) => o.id}
-        ListHeaderComponent={Header}
-        renderItem={Row}
-        ItemSeparatorComponent={() => <View style={styles.sep} />}
-        contentContainerStyle={{ padding: 16 }}
-      />
+    <View style={styles.screen}>
+      {/* Header with logo + logout (matches other screens) */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require('../assets/Images/rocket_logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+        </View>
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <FontAwesome name="sign-out" size={16} color="#0a65a0" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </Pressable>
+      </View>
 
-      {/* ✅ Order History Detail Modal */}
+      {/* Content */}
+      <View style={styles.content}>
+        <Text style={styles.pageTitle}>My Orders</Text>
+
+        <FlatList
+          data={orders}
+          keyExtractor={(o) => o.id}
+          ListHeaderComponent={HeaderRow}
+          renderItem={Row}
+          ItemSeparatorComponent={() => <View style={styles.sep} />}
+          contentContainerStyle={styles.listContent}
+        />
+      </View>
+
+      {/* Order History Detail Modal (styled like wireframe) */}
       <Modal visible={detailOpen} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            {selectedOrder && (
-              <>
-                <Text style={styles.modalTitle}>Order Details</Text>
-                <Text style={styles.modalSub}>
-                  <Text style={styles.bold}>Order ID:</Text> {selectedOrder.id}
+          {selectedOrder && (
+            <View style={styles.modalCard}>
+              {/* Top dark header with restaurant name */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalHeaderTitle}>
+                  {selectedOrder.restaurant}
                 </Text>
-                <Text style={styles.modalSub}>
-                  <Text style={styles.bold}>Status:</Text> {selectedOrder.status}
+                <Pressable onPress={closeDetails}>
+                  <FontAwesome name="close" size={20} color="#ffffff" />
+                </Pressable>
+              </View>
+
+              {/* Body */}
+              <View style={styles.modalBody}>
+                <Text style={styles.modalMeta}>
+                  <Text style={styles.metaLabel}>Order Date: </Text>
+                  {selectedOrder.date}
                 </Text>
-                <Text style={styles.modalSub}>
-                  <Text style={styles.bold}>Date:</Text> {selectedOrder.date}
+
+                <Text style={styles.modalMeta}>
+                  <Text style={styles.metaLabel}>Status: </Text>
+                  <Text style={styles.statusText(selectedOrder.status)}>
+                    {selectedOrder.status}
+                  </Text>
                 </Text>
-                <Text style={styles.modalSub}>
-                  <Text style={styles.bold}>Courier:</Text>{' '}
+
+                <Text style={styles.modalMeta}>
+                  <Text style={styles.metaLabel}>Courier: </Text>
                   {selectedOrder.courier}
                 </Text>
 
-                <View style={styles.modalListHeader}>
-                  <Text style={[styles.colName, styles.bold]}>Item</Text>
-                  <Text style={[styles.colQty, styles.bold]}>Qty</Text>
-                  <Text style={[styles.colPrice, styles.bold]}>Price</Text>
-                  <Text style={[styles.colTotal, styles.bold]}>Total</Text>
-                </View>
-
-                <ScrollView style={{ maxHeight: 240 }}>
+                {/* Items list */}
+                <View style={styles.modalItemsBox}>
                   {selectedOrder.items.map((it, idx) => (
-                    <View key={idx} style={styles.modalRow}>
-                      <Text style={styles.colName}>{it.name}</Text>
-                      <Text style={styles.colQty}>{it.qty}</Text>
-                      <Text style={styles.colPrice}>{formatMoney(it.price)}</Text>
-                      <Text style={styles.colTotal}>
+                    <View key={idx} style={styles.modalItemRow}>
+                      <Text style={styles.modalItemName}>{it.name}</Text>
+                      <Text style={styles.modalItemQty}>x{it.qty}</Text>
+                      <Text style={styles.modalItemPrice}>
                         {formatMoney(it.qty * it.price)}
                       </Text>
                     </View>
                   ))}
-                </ScrollView>
+                </View>
 
+                {/* Total row */}
                 <View style={styles.modalFooter}>
-                  <Text style={styles.modalSubtotalLabel}>Subtotal</Text>
+                  <Text style={styles.modalSubtotalLabel}>TOTAL:</Text>
                   <Text style={styles.modalSubtotalValue}>
                     {formatMoney(orderSubtotal(selectedOrder))}
                   </Text>
                 </View>
-
-                <Pressable style={styles.closeBtn} onPress={closeDetails}>
-                  <Text style={styles.closeBtnText}>Close</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+              </View>
+            </View>
+          )}
         </View>
       </Modal>
     </View>
@@ -180,54 +218,122 @@ export default function OrderHistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  headerRow: {
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  headerText: { fontWeight: '800', color: '#0f172a' },
+
+  // Header (same pattern as Restaurants/Menu)
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 140,
+    height: 40,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#0a65a0',
+    backgroundColor: '#ffffff',
+  },
+  logoutText: {
+    marginLeft: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0a65a0',
+  },
+
+  content: {
+    flex: 1,
+  },
+
+  pageTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 10,
+    marginHorizontal: 16,
+    marginBottom: 6,
+  },
+
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  // table header row
+  headerRow: {
+    backgroundColor: '#111827',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  headerText: {
+    fontWeight: '800',
+    color: '#ffffff',
+    fontSize: 13,
+  },
+
+  // shared row base
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 10,
-    backgroundColor: '#fff',
   },
-  sep: { height: 10 },
-  cellOrder: { flex: 2, fontWeight: '700' },
-  cellStatus: { flex: 1 },
-  cellView: { flex: 1 },
+
+  // data rows look like simple white cards
+  dataRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+
+  sep: { height: 8 },
+
+  cellOrder: { flex: 2, fontWeight: '700', fontSize: 14 },
+  cellStatus: { flex: 1, fontSize: 13 },
+  cellView: {
+    flex: 0.7,
+    alignItems: 'flex-end',
+  },
+
+  iconButton: {
+    padding: 4,
+  },
+
   statusText: (status) => ({
     fontWeight: '700',
     color:
-      status === 'Delivered'
+      status === 'PENDING'
+        ? '#f97316' // orange
+        : status === 'DELIVERED'
         ? '#16a34a'
-        : status === 'Preparing'
-        ? '#0ea5e9'
-        : status === 'Cancelled'
+        : status === 'CANCELLED'
         ? '#ef4444'
         : '#334155',
   }),
-  viewIconBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#0a65a0',
-    backgroundColor: '#e6f2fa',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    gap: 6,
-  },
-  viewIconText: { color: '#0a65a0', fontWeight: '800' },
+
+  // modal styles
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -236,47 +342,81 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    width: '88%',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  modalHeader: {
+    backgroundColor: '#111827',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalHeaderTitle: {
+    color: '#f97316', // orange restaurant name like wireframe
+    fontWeight: '800',
+    fontSize: 16,
+  },
+  modalBody: {
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
-  modalTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  modalSub: { marginBottom: 4 },
-  bold: { fontWeight: '800' },
-  modalListHeader: {
+  modalMeta: {
+    marginBottom: 4,
+    fontSize: 13,
+    color: '#111827',
+  },
+  metaLabel: {
+    fontWeight: '700',
+  },
+
+  modalItemsBox: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 8,
+  },
+  modalItemRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-    paddingVertical: 6,
-    marginTop: 8,
+    paddingVertical: 4,
   },
-  modalRow: {
-    flexDirection: 'row',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderColor: '#f5f5f5',
+  modalItemName: {
+    flex: 2,
+    fontSize: 13,
   },
-  colName: { flex: 2 },
-  colQty: { flex: 0.6, textAlign: 'center' },
-  colPrice: { flex: 0.9, textAlign: 'right' },
-  colTotal: { flex: 0.9, textAlign: 'right' },
+  modalItemQty: {
+    flex: 0.6,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalItemPrice: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
   modalFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
   },
-  modalSubtotalLabel: { fontWeight: '700' },
-  modalSubtotalValue: { fontWeight: '800' },
-  closeBtn: {
-    marginTop: 10,
-    alignSelf: 'center',
-    backgroundColor: '#0a65a0',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+  modalSubtotalLabel: {
+    fontWeight: '800',
+    fontSize: 14,
+    marginRight: 4,
   },
-  closeBtnText: { color: '#fff', fontWeight: '800' },
+  modalSubtotalValue: {
+    fontWeight: '800',
+    fontSize: 14,
+  },
 });
