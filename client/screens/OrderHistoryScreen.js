@@ -8,10 +8,11 @@ import {
   Pressable,
   ActivityIndicator,
   Modal,
+  ScrollView,
+  Image,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'react-native';
 
 const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
 
@@ -87,7 +88,7 @@ export default function OrderHistoryScreen({ navigation }) {
   const orderSubtotal = (order) =>
     (order?.items || []).reduce(
       (sum, it) => sum + (it.qty || 0) * (it.price || 0),
-      0
+      0,
     );
 
   const HeaderRow = () => (
@@ -129,7 +130,7 @@ export default function OrderHistoryScreen({ navigation }) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image
-            source={require('../assets/Images/rocket_logo.png')}
+            source={require('../assets/Images/AppLogoV1.png')}
             style={styles.headerLogo}
             resizeMode="contain"
           />
@@ -154,63 +155,76 @@ export default function OrderHistoryScreen({ navigation }) {
         />
       </View>
 
-      {/* Order History Detail Modal (styled like wireframe) */}
+      {/* Order History Detail Modal */}
       <Modal visible={detailOpen} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-          {selectedOrder && (
-            <View style={styles.modalCard}>
-              {/* Top dark header with restaurant name */}
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalHeaderTitle}>
-                  {selectedOrder.restaurant}
-                </Text>
-                <Pressable onPress={closeDetails}>
-                  <FontAwesome name="close" size={20} color="#ffffff" />
-                </Pressable>
-              </View>
-
-              {/* Body */}
-              <View style={styles.modalBody}>
-                <Text style={styles.modalMeta}>
-                  <Text style={styles.metaLabel}>Order Date: </Text>
-                  {selectedOrder.date}
-                </Text>
-
-                <Text style={styles.modalMeta}>
-                  <Text style={styles.metaLabel}>Status: </Text>
-                  <Text style={styles.statusText(selectedOrder.status)}>
-                    {selectedOrder.status}
+          <View style={styles.modalCard}>
+            {selectedOrder && (
+              <>
+                {/* Top dark header */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalHeaderTitle}>
+                    {selectedOrder.restaurant}
                   </Text>
-                </Text>
-
-                <Text style={styles.modalMeta}>
-                  <Text style={styles.metaLabel}>Courier: </Text>
-                  {selectedOrder.courier}
-                </Text>
-
-                {/* Items list */}
-                <View style={styles.modalItemsBox}>
-                  {selectedOrder.items.map((it, idx) => (
-                    <View key={idx} style={styles.modalItemRow}>
-                      <Text style={styles.modalItemName}>{it.name}</Text>
-                      <Text style={styles.modalItemQty}>x{it.qty}</Text>
-                      <Text style={styles.modalItemPrice}>
-                        {formatMoney(it.qty * it.price)}
-                      </Text>
-                    </View>
-                  ))}
+                  <Pressable onPress={closeDetails}>
+                    <FontAwesome name="close" size={20} color="#ffffff" />
+                  </Pressable>
                 </View>
 
-                {/* Total row */}
-                <View style={styles.modalFooter}>
-                  <Text style={styles.modalSubtotalLabel}>TOTAL:</Text>
-                  <Text style={styles.modalSubtotalValue}>
-                    {formatMoney(orderSubtotal(selectedOrder))}
+                {/* Summary section */}
+                <View style={styles.modalBody}>
+                  <Text style={styles.modalMeta}>
+                    <Text style={styles.metaLabel}>Order Date: </Text>
+                    {selectedOrder.date}
                   </Text>
+
+                  <Text style={styles.modalMeta}>
+                    <Text style={styles.metaLabel}>Status: </Text>
+                    <Text style={styles.statusText(selectedOrder.status)}>
+                      {selectedOrder.status}
+                    </Text>
+                  </Text>
+
+                  <Text style={styles.modalMeta}>
+                    <Text style={styles.metaLabel}>Courier: </Text>
+                    {selectedOrder.courier}
+                  </Text>
+
+                  {/* Items header */}
+                  <View style={styles.modalListHeader}>
+                    <Text style={[styles.colName, styles.bold]}>Item</Text>
+                    <Text style={[styles.colQty, styles.bold]}>Qty</Text>
+                    <Text style={[styles.colPrice, styles.bold]}>Price</Text>
+                    <Text style={[styles.colTotal, styles.bold]}>Total</Text>
+                  </View>
+
+                  {/* Items */}
+                  <ScrollView style={{ maxHeight: 220 }}>
+                    {selectedOrder.items.map((it, idx) => (
+                      <View key={idx} style={styles.modalRow}>
+                        <Text style={styles.colName}>{it.name}</Text>
+                        <Text style={styles.colQty}>{it.qty}</Text>
+                        <Text style={styles.colPrice}>
+                          {formatMoney(it.price)}
+                        </Text>
+                        <Text style={styles.colTotal}>
+                          {formatMoney(it.qty * it.price)}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+
+                  {/* Total */}
+                  <View style={styles.modalFooter}>
+                    <Text style={styles.modalSubtotalLabel}>TOTAL:</Text>
+                    <Text style={styles.modalSubtotalValue}>
+                      {formatMoney(orderSubtotal(selectedOrder))}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </View>
-          )}
+              </>
+            )}
+          </View>
         </View>
       </Modal>
     </View>
@@ -220,10 +234,10 @@ export default function OrderHistoryScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f3f4f6', // light grey like wireframe background
   },
 
-  // Header (same pattern as Restaurants/Menu)
+  // header (logo + logout)
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -264,6 +278,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  listContent: {
+    padding: 16,
+    paddingBottom: 24,
+  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
   pageTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -272,24 +292,17 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
   // table header row
   headerRow: {
     backgroundColor: '#111827',
-    borderRadius: 8,
-    paddingVertical: 8,
+    borderRadius: 10,
+    paddingVertical: 10,
     paddingHorizontal: 12,
-    marginBottom: 8,
   },
   headerText: {
     fontWeight: '800',
     color: '#ffffff',
-    fontSize: 13,
+    fontSize: 14,
   },
 
   // shared row base
@@ -298,40 +311,58 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // data rows look like simple white cards
+  // data rows look like small cards
   dataRow: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
 
-  sep: { height: 8 },
+  sep: { height: 10 },
 
   cellOrder: { flex: 2, fontWeight: '700', fontSize: 14 },
   cellStatus: { flex: 1, fontSize: 13 },
   cellView: {
-    flex: 0.7,
+    flex: 1,
     alignItems: 'flex-end',
-  },
-
-  iconButton: {
-    padding: 4,
   },
 
   statusText: (status) => ({
     fontWeight: '700',
     color:
       status === 'PENDING'
-        ? '#f97316' // orange
+        ? '#f97316'
         : status === 'DELIVERED'
         ? '#16a34a'
         : status === 'CANCELLED'
         ? '#ef4444'
         : '#334155',
   }),
+
+  viewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#0a65a0',
+    backgroundColor: '#e6f2fa',
+    gap: 6,
+  },
+  viewBtnText: {
+    color: '#0a65a0',
+    fontWeight: '700',
+    fontSize: 13,
+  },
 
   // modal styles
   modalBackdrop: {
@@ -342,14 +373,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    width: '88%',
-    borderRadius: 12,
+    width: '100%',
+    borderRadius: 16,
     backgroundColor: '#ffffff',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
   },
   modalHeader: {
     backgroundColor: '#111827',
@@ -360,7 +387,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   modalHeaderTitle: {
-    color: '#f97316', // orange restaurant name like wireframe
+    color: '#ffffff',
     fontWeight: '800',
     fontSize: 16,
   },
@@ -370,50 +397,38 @@ const styles = StyleSheet.create({
   modalMeta: {
     marginBottom: 4,
     fontSize: 13,
-    color: '#111827',
   },
   metaLabel: {
     fontWeight: '700',
   },
+  bold: { fontWeight: '800' },
 
-  modalItemsBox: {
-    marginTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingTop: 8,
-  },
-  modalItemRow: {
+  modalListHeader: {
     flexDirection: 'row',
-    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderColor: '#e5e7eb',
+    paddingVertical: 6,
+    marginTop: 10,
   },
-  modalItemName: {
-    flex: 2,
-    fontSize: 13,
+  modalRow: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderColor: '#f3f4f6',
   },
-  modalItemQty: {
-    flex: 0.6,
-    textAlign: 'center',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  modalItemPrice: {
-    flex: 1,
-    textAlign: 'right',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  colName: { flex: 2, fontSize: 13 },
+  colQty: { flex: 0.6, textAlign: 'center', fontSize: 13 },
+  colPrice: { flex: 0.9, textAlign: 'right', fontSize: 13 },
+  colTotal: { flex: 0.9, textAlign: 'right', fontSize: 13 },
 
   modalFooter: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   modalSubtotalLabel: {
     fontWeight: '800',
     fontSize: 14,
-    marginRight: 4,
   },
   modalSubtotalValue: {
     fontWeight: '800',
