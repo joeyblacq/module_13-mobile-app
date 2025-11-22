@@ -62,9 +62,9 @@ export default function LoginScreen({ navigation }) {
       >
         <View style={styles.container}>
           
-          {/* Rocket Logo */}
+          {/*  Logo */}
           <Image
-            source={require('../assets/Images/rocket_logo.png')}
+            source={require('../assets/Images/AppLogo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
