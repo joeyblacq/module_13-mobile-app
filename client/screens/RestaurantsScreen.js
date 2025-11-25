@@ -11,18 +11,18 @@ const BASE_URL = 'http://localhost:8080';
 // Folder: client/assets/Images/Restaurants/
 // Keys are restaurant names without spaces, all lowercase.
 const restaurantImages = {
-  rocketpizza: require('../assets/Images/Restaurants/cuisinePizza.jpg'),
-  galaxyburgers: require('../assets/Images/Restaurants/cuisineGreek.jpg'),
-  orbitsushi: require('../assets/Images/Restaurants/cuisineJapanese.jpg'),
-  comettacos: require('../assets/Images/Restaurants/cuisineSoutheast.jpg'),
-  nebulanoodles: require('../assets/Images/Restaurants/cuisinePasta.jpg'),
-  vietkitchen: require('../assets/Images/Restaurants/cuisineViet.jpg'),
+  rocketpizza: '../assets/Images/Restaurants/cuisinePizza.jpg',
+  galaxyburgers: '../assets/Images/Restaurants/cuisineGreek.jpg',
+  orbitsushi: '../assets/Images/Restaurants/cuisineJapanese.jpg',
+  comettacos: '../assets/Images/Restaurants/cuisineSoutheast.jpg',
+  nebulanoodles: '../assets/Images/Restaurants/cuisinePasta.jpg',
+  vietkitchen: '../assets/Images/Restaurants/cuisineViet.jpg',
   // add more mappings if you add more restaurants
 };
 
 // 🔹 DEFAULT FALLBACK IMAGE
 // If a restaurant name doesn't match any key above, this one is used.
-const defaultRestaurantImage = require('../assets/Images/RestaurantMenu.jpg');
+import defaultRestaurantImage from '../assets/Images/RestaurantMenu.jpg';
 
 // 🔹 NORMALIZER FUNCTION
 function normalizeRestaurant(r, index) {
