@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import HeaderLogo from '../assets/Images/AppLogoV1.png';
 const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 export default function OrderHistoryScreen({ navigation }) {
@@ -130,7 +130,7 @@ export default function OrderHistoryScreen({ navigation }) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image
-            source={require('../assets/Images/AppLogoV1.png')}
+            source={HeaderLogo}
             style={styles.headerLogo}
             resizeMode="contain"
           />
