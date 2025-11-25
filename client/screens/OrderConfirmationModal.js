@@ -57,7 +57,7 @@ const OrderConfirmationModal = ({
     >
       <View style={styles.backdrop}>
         <View style={styles.card}>
-          {/* Header bar matches wireframe */}
+          {/* Header bar */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Order Confirmation</Text>
             <TouchableOpacity
@@ -76,9 +76,10 @@ const OrderConfirmationModal = ({
 
           {/* Body */}
           <View style={styles.body}>
+            {/* Section title */}
             <Text style={styles.sectionTitle}>Order Summary</Text>
-            <View style={styles.divider} />
 
+            {/* Items */}
             {hasItems ? (
               <ScrollView style={styles.itemsScroll}>
                 {orderItems.map((item) => {
@@ -104,7 +105,10 @@ const OrderConfirmationModal = ({
               </View>
             )}
 
-            {/* TOTAL row (right aligned) */}
+            {/* Thin divider under items (like screenshot) */}
+            <View style={styles.itemsDivider} />
+
+            {/* TOTAL row */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>TOTAL:</Text>
               <Text style={styles.totalValue}>
@@ -112,27 +116,10 @@ const OrderConfirmationModal = ({
               </Text>
             </View>
 
-            {/* SUCCESS state (wireframe 2) */}
-            {isSuccess && (
-              <View style={styles.feedbackRow}>
-                <View style={styles.iconCircleSuccess}>
-                  <FontAwesome name="check" size={14} color="#ffffff" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.feedbackTitle}>Thank you!</Text>
-                  <Text style={styles.feedbackText}>
-                    Your order has been received.
-                  </Text>
-                </View>
-              </View>
-            )}
+            {/* Divider between total and button */}
+            <View style={styles.buttonDivider} />
 
-            {/* FAILURE state (wireframe 3) – message under button */}
-            {!isSuccess && isFailure && !isProcessing && (
-              <View style={styles.failureSpacer} />
-            )}
-
-            {/* PRIMARY BUTTON (bottom, wireframe 4 / 1 / 3) */}
+            {/* MAIN BUTTON */}
             {!isSuccess && (
               <TouchableOpacity
                 style={[
@@ -155,27 +142,37 @@ const OrderConfirmationModal = ({
               </TouchableOpacity>
             )}
 
-            {/* Failure message below button (wireframe 3) */}
+            {/* FAILURE MESSAGE (matches screenshot layout) */}
             {!isSuccess && isFailure && !isProcessing && (
-              <View style={styles.failureRow}>
+              <View style={styles.failureContainer}>
                 <View style={styles.iconCircleFailure}>
-                  <FontAwesome name="close" size={14} color="#ffffff" />
+                  <FontAwesome name="close" size={16} color="#ffffff" />
                 </View>
                 <Text style={styles.failureText}>
                   {errorMessage ||
-                    'Your order was not processed successfully. Please try again.'}
+                    'Your order was not processed successfully.\nPlease try again.'}
                 </Text>
               </View>
             )}
 
-            {/* Close button for success state (optional UX) */}
+            {/* SUCCESS STATE – optional: center icon + text */}
             {isSuccess && (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={onClose}
-              >
-                <Text style={styles.secondaryButtonText}>CLOSE</Text>
-              </TouchableOpacity>
+              <View style={styles.successContainer}>
+                <View style={styles.iconCircleSuccess}>
+                  <FontAwesome name="check" size={16} color="#ffffff" />
+                </View>
+                <Text style={styles.successTitle}>Thank you!</Text>
+                <Text style={styles.successText}>
+                  Your order has been received.
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={onClose}
+                >
+                  <Text style={styles.secondaryButtonText}>CLOSE</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
@@ -205,6 +202,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
+  // Header
   header: {
     backgroundColor: '#111827',
     paddingHorizontal: 16,
@@ -223,24 +221,20 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
 
+  // Body
   body: {
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
 
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#e5e7eb',
-    marginBottom: 8,
+    marginBottom: 10,
   },
 
   itemsScroll: {
-    maxHeight: 200,
+    maxHeight: 220,
   },
 
   row: {
@@ -259,7 +253,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   itemPrice: {
-    width: 70,
+    width: 80,
     textAlign: 'right',
     fontSize: 14,
     fontWeight: '600',
@@ -274,17 +268,20 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
 
+  itemsDivider: {
+    height: 1,
+    backgroundColor: '#000000',
+    marginTop: 8,
+  },
+
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
   },
   totalLabel: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     marginRight: 4,
   },
   totalValue: {
@@ -292,14 +289,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // spacing above button for failure state so error message sits nicely below
-  failureSpacer: {
-    height: 4,
+  buttonDivider: {
+    height: 16,
   },
 
   primaryButton: {
-    marginTop: 12,
-    backgroundColor: '#D86F52', // orange wireframe button
+    backgroundColor: '#D86F52', // orange like the wireframe
     borderRadius: 6,
     paddingVertical: 12,
     alignItems: 'center',
@@ -315,54 +310,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  failureRow: {
-    flexDirection: 'row',
+  // Failure state – centered circle and text underneath
+  failureContainer: {
+    marginTop: 16,
     alignItems: 'center',
-    marginTop: 10,
   },
   iconCircleFailure: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#b91c1c',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginBottom: 8,
   },
   failureText: {
-    flex: 1,
+    textAlign: 'center',
     fontSize: 13,
-    color: '#b91c1c',
-    fontWeight: '600',
+    color: '#111827',
   },
 
-  feedbackRow: {
-    flexDirection: 'row',
+  // Success state – centered too (not in the screenshot but nice UX)
+  successContainer: {
+    marginTop: 16,
     alignItems: 'center',
-    marginTop: 12,
   },
   iconCircleSuccess: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#16a34a',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginBottom: 8,
   },
-  feedbackTitle: {
-    fontSize: 14,
+  successTitle: {
+    fontSize: 15,
     fontWeight: '700',
+    marginBottom: 4,
   },
-  feedbackText: {
+  successText: {
     fontSize: 13,
     color: '#4b5563',
+    textAlign: 'center',
+    marginBottom: 12,
   },
-
   secondaryButton: {
-    marginTop: 14,
+    marginTop: 4,
     borderRadius: 6,
     paddingVertical: 10,
+    paddingHorizontal: 24,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#d1d5db',
