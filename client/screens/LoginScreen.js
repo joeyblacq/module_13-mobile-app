@@ -14,6 +14,9 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import RocketLogo from '../assets/Images/AppLogoV1.png';
+
+
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
 export default function LoginScreen({ navigation }) {
@@ -64,7 +67,7 @@ export default function LoginScreen({ navigation }) {
           
           {/*  Logo */}
           <Image
-            source={require('../assets/Images/AppLogo.png')}
+            source={RocketLogo}
             style={styles.logo}
             resizeMode="contain"
           />
