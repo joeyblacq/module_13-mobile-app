@@ -1,6 +1,16 @@
 // client/screens/MenuScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, FlatList, StyleSheet, Pressable, Alert, ScrollView, Image } from 'react-native';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Alert,
+  ScrollView,
+  Image,
+} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import OrderConfirmationModal from './OrderConfirmationModal';
 import OrderDetailModal from './OrderDetailModal';
@@ -26,6 +36,7 @@ export default function MenuScreen({ route }) {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [orderError, setOrderError] = useState('');
 
+  // Reset state when restaurant changes
   useEffect(() => {
     setQty({});
     setMenu(null);
@@ -35,6 +46,15 @@ export default function MenuScreen({ route }) {
     setOrderSuccess(false);
     setOrderError('');
   }, [id]);
+
+  // Auto-hide the success banner after 2 seconds
+  useEffect(() => {
+    if (!orderSuccess) return;
+    const timer = setTimeout(() => {
+      setOrderSuccess(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [orderSuccess]);
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -57,9 +77,24 @@ export default function MenuScreen({ route }) {
         setQty(zero);
       } catch {
         const mock = [
-          { id: `m-${id}-1`, name: 'Margherita Pizza', desc: 'Tomato, mozzarella, basil', price: 12.99 },
-          { id: `m-${id}-2`, name: 'Caesar Salad', desc: 'Romaine, parmesan, croutons', price: 8.5 },
-          { id: `m-${id}-3`, name: 'Tiramisu', desc: 'Coffee-soaked ladyfingers, mascarpone', price: 6.75 },
+          {
+            id: `m-${id}-1`,
+            name: 'Margherita Pizza',
+            desc: 'Tomato, mozzarella, basil',
+            price: 12.99,
+          },
+          {
+            id: `m-${id}-2`,
+            name: 'Caesar Salad',
+            desc: 'Romaine, parmesan, croutons',
+            price: 8.5,
+          },
+          {
+            id: `m-${id}-3`,
+            name: 'Tiramisu',
+            desc: 'Coffee-soaked ladyfingers, mascarpone',
+            price: 6.75,
+          },
         ];
         setMenu(mock);
         const zero = {};
@@ -101,7 +136,8 @@ export default function MenuScreen({ route }) {
   };
 
   const onCreateOrder = () => {
-    if (!hasAnyItems || processing || orderSuccess) return;
+    // 👇 only block when no items or processing; don't block on orderSuccess
+    if (!hasAnyItems || processing) return;
     setOrderError('');
     setConfirmOpen(true);
   };
@@ -114,7 +150,6 @@ export default function MenuScreen({ route }) {
       const items = selectedItems.map((it) => ({
         id: it.id,
         quantity: it.qty,
-        // price: it.price,
       }));
 
       const res = await fetch(`${BASE_URL}/api/orders`, {
@@ -123,21 +158,24 @@ export default function MenuScreen({ route }) {
         body: JSON.stringify({
           restaurant_id: id,
           customer_id: 1,
-          products:items,
-          // totalAmount: subtotal,
+          products: items,
         }),
       });
 
       if (!res.ok) throw new Error('Order request failed');
 
+      // ✅ show success banner + close modal
       setOrderSuccess(true);
       setConfirmOpen(false);
 
       Alert.alert(
         'Order Created',
-        `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(subtotal)}`
+        `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(
+          subtotal
+        )}`
       );
 
+      // reset quantities
       const reset = {};
       Object.keys(qty).forEach((k) => (reset[k] = 0));
       setQty(reset);
@@ -165,21 +203,38 @@ export default function MenuScreen({ route }) {
 
         <View style={styles.qtyBox}>
           <Pressable
-            style={[styles.qtyBtn, (count === 0 || processing || orderSuccess) && styles.qtyBtnDisabled]}
+            style={[
+              styles.qtyBtn,
+              (count === 0 || processing) && styles.qtyBtnDisabled,
+            ]}
             onPress={() => dec(item.id)}
-            disabled={count === 0 || processing || orderSuccess}
+            disabled={count === 0 || processing} // 🔑 removed orderSuccess
           >
-            <Text style={[styles.qtyBtnText, (count === 0 || processing || orderSuccess) && styles.qtyBtnTextDisabled]}>−</Text>
+            <Text
+              style={[
+                styles.qtyBtnText,
+                (count === 0 || processing) && styles.qtyBtnTextDisabled,
+              ]}
+            >
+              −
+            </Text>
           </Pressable>
 
           <Text style={styles.qtyVal}>{count}</Text>
 
           <Pressable
-            style={[styles.qtyBtn, (processing || orderSuccess) && styles.qtyBtnDisabled]}
+            style={[styles.qtyBtn, processing && styles.qtyBtnDisabled]}
             onPress={() => inc(item.id)}
-            disabled={processing || orderSuccess}
+            disabled={processing} // 🔑 removed orderSuccess
           >
-            <Text style={[styles.qtyBtnText, (processing || orderSuccess) && styles.qtyBtnTextDisabled]}>+</Text>
+            <Text
+              style={[
+                styles.qtyBtnText,
+                processing && styles.qtyBtnTextDisabled,
+              ]}
+            >
+              +
+            </Text>
           </Pressable>
         </View>
 
@@ -196,13 +251,23 @@ export default function MenuScreen({ route }) {
 
       <Image source={MENU_HERO} style={styles.menuImage} resizeMode="cover" />
 
+      {!menu && !error && (
+        <View style={styles.center}>
+          <ActivityIndicator />
+        </View>
+      )}
+
       <FlatList
         data={menu}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ padding: 16 }}
         renderItem={renderItem}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-        ListEmptyComponent={<View style={styles.center}><Text>No menu items found.</Text></View>}
+        ListEmptyComponent={
+          <View style={styles.center}>
+            <Text>No menu items found.</Text>
+          </View>
+        }
       />
 
       <View style={styles.footer}>
@@ -220,9 +285,17 @@ export default function MenuScreen({ route }) {
           <Pressable
             onPress={onCreateOrder}
             disabled={!hasAnyItems || processing}
-            style={[styles.cta, (!hasAnyItems || processing) && styles.ctaDisabled]}
+            style={[
+              styles.cta,
+              (!hasAnyItems || processing) && styles.ctaDisabled,
+            ]}
           >
-            <Text style={[styles.ctaText, (!hasAnyItems || processing) && styles.ctaTextDisabled]}>
+            <Text
+              style={[
+                styles.ctaText,
+                (!hasAnyItems || processing) && styles.ctaTextDisabled,
+              ]}
+            >
               {processing ? 'Processing Order…' : 'Create Order'}
             </Text>
           </Pressable>
@@ -246,28 +319,88 @@ export default function MenuScreen({ route }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  warn: { color: '#8a6d3b', backgroundColor: '#fcf8e3', padding: 8, textAlign: 'center' },
+  warn: {
+    color: '#8a6d3b',
+    backgroundColor: '#fcf8e3',
+    padding: 8,
+    textAlign: 'center',
+  },
   menuImage: { width: '100%', height: 160, backgroundColor: '#f2f2f2' },
-  item: { backgroundColor: '#fff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#eee', flexDirection: 'row', alignItems: 'center', gap: 12 },
+  item: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   itemName: { fontSize: 16, fontWeight: '700' },
   itemDesc: { color: '#555', marginTop: 2 },
   itemPrice: { marginTop: 6, fontWeight: '800' },
-  qtyBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f8fafc', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 6 },
-  qtyBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#ffffff' },
+  qtyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  qtyBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#ffffff',
+  },
   qtyBtnDisabled: { opacity: 0.4 },
   qtyBtnText: { fontSize: 18, fontWeight: '900' },
   qtyBtnTextDisabled: { color: '#94a3b8' },
   qtyVal: { minWidth: 20, textAlign: 'center', fontWeight: '800' },
   lineTotal: { minWidth: 64, alignItems: 'flex-end', marginLeft: 'auto' },
   lineTotalText: { fontWeight: '800' },
-  footer: { borderTopWidth: 1, borderColor: '#eee', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: 12 },
-  footerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  footer: {
+    borderTopWidth: 1,
+    borderColor: '#eee',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
   subtotalLabel: { fontSize: 16, fontWeight: '700' },
   subtotalValue: { fontSize: 16, fontWeight: '800' },
-  cta: { backgroundColor: '#0a65a0', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10 },
+  cta: {
+    backgroundColor: '#0a65a0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
   ctaDisabled: { backgroundColor: '#9bbbd0' },
   ctaText: { color: '#fff', fontWeight: '800' },
   ctaTextDisabled: { color: '#f1f5f9' },
-  successWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#ecfdf5', borderColor: '#a7f3d0', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  successWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
   successText: { color: '#065f46', fontWeight: '800' },
 });
