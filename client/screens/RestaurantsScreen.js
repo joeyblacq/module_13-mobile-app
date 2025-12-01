@@ -1,28 +1,42 @@
 // client/screens/RestaurantsScreen.js
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ActivityIndicator, FlatList, StyleSheet, Image, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Image,
+  Pressable,
+} from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 
 // TODO: point to your backend host:port or use EXPO_PUBLIC_NGROK_URL
 const BASE_URL = 'http://localhost:8080';
 
+// 🔹 IMPORT LOCAL IMAGES (STATIC)
+import cuisinePizza from '../assets/Images/Restaurants/cuisinePizza.jpg';
+import cuisineGreek from '../assets/Images/Restaurants/cuisineGreek.jpg';
+import cuisineJapanese from '../assets/Images/Restaurants/cuisineJapanese.jpg';
+import cuisineSoutheast from '../assets/Images/Restaurants/cuisineSoutheast.jpg';
+import cuisinePasta from '../assets/Images/Restaurants/cuisinePasta.jpg';
+import cuisineViet from '../assets/Images/Restaurants/cuisineViet.jpg';
+
+// 🔹 DEFAULT FALLBACK IMAGE (SITS IN assets/Images)
+import defaultRestaurantImage from '../assets/Images/RestaurantMenu.jpg';
+
 // 🔹 LOCAL IMAGE MAP
-// Folder: client/assets/Images/Restaurants/
 // Keys are restaurant names without spaces, all lowercase.
 const restaurantImages = {
-  rocketpizza: '../assets/Images/Restaurants/cuisinePizza.jpg',
-  galaxyburgers: '../assets/Images/Restaurants/cuisineGreek.jpg',
-  orbitsushi: '../assets/Images/Restaurants/cuisineJapanese.jpg',
-  comettacos: '../assets/Images/Restaurants/cuisineSoutheast.jpg',
-  nebulanoodles: '../assets/Images/Restaurants/cuisinePasta.jpg',
-  vietkitchen: '../assets/Images/Restaurants/cuisineViet.jpg',
+  rocketpizza: cuisinePizza,
+  galaxyburgers: cuisineGreek,
+  orbitsushi: cuisineJapanese,
+  comettacos: cuisineSoutheast,
+  nebulanoodles: cuisinePasta,
+  vietkitchen: cuisineViet,
   // add more mappings if you add more restaurants
 };
-
-// 🔹 DEFAULT FALLBACK IMAGE
-// If a restaurant name doesn't match any key above, this one is used.
-import defaultRestaurantImage from '../assets/Images/RestaurantMenu.jpg';
 
 // 🔹 NORMALIZER FUNCTION
 function normalizeRestaurant(r, index) {
@@ -58,8 +72,8 @@ export default function RestaurantsScreen({ navigation }) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        const normalized = (Array.isArray(data.data) ? data.data : []).map((r, i) =>
-          normalizeRestaurant(r, i),
+        const normalized = (Array.isArray(data.data) ? data.data : []).map(
+          (r, i) => normalizeRestaurant(r, i),
         );
         setRestaurants(normalized);
       } catch {
