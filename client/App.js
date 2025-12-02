@@ -7,6 +7,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { FontAwesome } from '@expo/vector-icons';
 
+// ✅ Oswald fonts
+import {
+  useFonts,
+  Oswald_400Regular,
+  Oswald_700Bold,
+} from '@expo-google-fonts/oswald';
+
 import LoginScreen from './screens/LoginScreen';
 import RestaurantsScreen from './screens/RestaurantsScreen';
 import MenuScreen from './screens/MenuScreen';
@@ -24,10 +31,16 @@ const Tabs = createBottomTabNavigator();
 
 // ---------------------- CUSTOMER APP ----------------------
 
-// Restaurants tab stack: Handles navigation from Restaurants list to the Menu screen.
 function RestaurantsStackScreen() {
   return (
-    <RestaurantsStack.Navigator>
+    <RestaurantsStack.Navigator
+      screenOptions={{
+        headerTitleStyle: {
+          fontFamily: 'Oswald_700Bold',
+          fontSize: 18,
+        },
+      }}
+    >
       <RestaurantsStack.Screen
         name="Restaurants"
         component={RestaurantsScreen}
@@ -42,10 +55,16 @@ function RestaurantsStackScreen() {
   );
 }
 
-// Orders tab stack: For the Order History screen.
 function OrdersStackScreen() {
   return (
-    <OrdersStack.Navigator>
+    <OrdersStack.Navigator
+      screenOptions={{
+        headerTitleStyle: {
+          fontFamily: 'Oswald_700Bold',
+          fontSize: 18,
+        },
+      }}
+    >
       <OrdersStack.Screen
         name="OrderHistory"
         component={OrderHistoryScreen}
@@ -55,7 +74,7 @@ function OrdersStackScreen() {
   );
 }
 
-// Bottom tabs (footer) for CUSTOMER app: 3 tabs (Restaurants, Order History, Account)
+// Footer for CUSTOMER app: Restaurants, Order History, Account
 function MainTabs() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
@@ -95,10 +114,16 @@ function MainTabs() {
 
 // ---------------------- COURIER APP ----------------------
 
-// Courier stack: main "My Deliveries" screen (Delivery History Page)
 function CourierStackScreen() {
   return (
-    <CourierStack.Navigator>
+    <CourierStack.Navigator
+      screenOptions={{
+        headerTitleStyle: {
+          fontFamily: 'Oswald_700Bold',
+          fontSize: 18,
+        },
+      }}
+    >
       <CourierStack.Screen
         name="CourierHome"
         component={CourierDeliveriesScreen}
@@ -108,9 +133,8 @@ function CourierStackScreen() {
   );
 }
 
-// Wrapper to reuse AccountScreen for courier role
+// Wrapper so AccountScreen shows courier role
 function CourierAccountScreenWrapper(props) {
-  // Force role = 'COURIER' so AccountScreen shows courier email/phone
   const injectedRoute = {
     ...(props.route || {}),
     params: { ...(props.route?.params || {}), role: 'COURIER' },
@@ -119,7 +143,7 @@ function CourierAccountScreenWrapper(props) {
   return <AccountScreen {...props} route={injectedRoute} />;
 }
 
-// Footer for COURIER app: 2 tabs (Deliveries, Account)
+// Footer for COURIER app: Deliveries, Account
 function CourierMainTabs() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
@@ -150,6 +174,12 @@ function CourierMainTabs() {
 // ---------------------- ROOT APP ----------------------
 
 export default function App() {
+  // ✅ Load Oswald fonts
+  const [fontsLoaded] = useFonts({
+    Oswald_400Regular,
+    Oswald_700Bold,
+  });
+
   // 'Login' | 'Main' | 'CourierMain' | 'AccountSelection'
   const [initialRoute, setInitialRoute] = useState(null);
 
@@ -175,7 +205,6 @@ export default function App() {
         } else if (hasCourier && !hasCustomer) {
           setInitialRoute('CourierMain');
         } else {
-          // Fallback: token but no recognized roles
           setInitialRoute('Main');
         }
       } catch {
@@ -186,7 +215,8 @@ export default function App() {
     checkAuth();
   }, []);
 
-  if (!initialRoute) {
+  // ✅ Wait for fonts and initialRoute
+  if (!fontsLoaded || !initialRoute) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" />
@@ -196,30 +226,29 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      {/* Header/Footer nav is present on all app screens except Login + AccountSelection */}
       <RootStack.Navigator initialRouteName={initialRoute}>
-        {/* Login screen – NO header/footer */}
+        {/* Login screen – no header/footer */}
         <RootStack.Screen
           name="Login"
           component={LoginScreen}
           options={{ headerShown: false }}
         />
 
-        {/* Customer app root (with footer nav) */}
+        {/* Customer app root */}
         <RootStack.Screen
           name="Main"
           component={MainTabs}
           options={{ headerShown: false }}
         />
 
-        {/* Courier app root (with footer nav) */}
+        {/* Courier app root */}
         <RootStack.Screen
           name="CourierMain"
           component={CourierMainTabs}
           options={{ headerShown: false }}
         />
 
-        {/* Account selection – special case: no header/footer */}
+        {/* Account Selection – no header/footer */}
         <RootStack.Screen
           name="AccountSelection"
           component={AccountSelectionScreen}
