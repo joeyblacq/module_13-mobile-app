@@ -16,7 +16,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import RocketLogo from '../assets/Images/AppLogoV1.png';
 
-
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
 export default function LoginScreen({ navigation }) {
@@ -27,16 +26,19 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     setError('');
+
     if (!API_BASE) {
       setError('Missing API base URL.');
       return;
     }
+
     if (!email.trim() || !password) {
       setError('Email and password are required.');
       return;
     }
 
     setSubmitting(true);
+
     try {
       const response = await fetch(`${API_BASE}/api/auth`, {
         method: 'POST',
@@ -45,14 +47,51 @@ export default function LoginScreen({ navigation }) {
       });
 
       if (!response.ok) {
+        // ❌ Incorrect credentials → inline error ABOVE the button
         setError('Invalid email or password.');
-        setSubmitting(false);
         return;
       }
 
-      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-    } catch {
+      // ✅ Parse login response
+      // Expected shape (example):
+      // { token: "jwt-token", roles: ["CUSTOMER"] }
+      const data = await response.json().catch(() => ({}));
+
+      const token =
+        data.token || data.accessToken || null; // be flexible on field name
+      const roles = Array.isArray(data.roles) ? data.roles : [];
+
+      // Store token & roles if present
+      if (token) {
+        await AsyncStorage.setItem('auth_token', token);
+      }
+      if (roles.length > 0) {
+        await AsyncStorage.setItem('roles', JSON.stringify(roles));
+      }
+
+      const hasCustomer = roles.includes('CUSTOMER');
+      const hasCourier = roles.includes('COURIER');
+
+      // ✅ Requirement:
+      // If the user has ONLY a customer account, direct them to the Customer app.
+      if (hasCustomer && !hasCourier) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }], // 'Main' is your existing Customer app root
+        });
+        return;
+      }
+
+      // For now, for any other case (no roles / courier / both),
+      // just fall back to Main until we implement the next requirements.
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
+    } catch (err) {
+      console.error('Login error:', err);
       setError('Unable to reach server. Please try again.');
+    } finally {
       setSubmitting(false);
     }
   };
@@ -64,13 +103,8 @@ export default function LoginScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.container}>
-          
-          {/*  Logo */}
-          <Image
-            source={RocketLogo}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          {/* Logo */}
+          <Image source={RocketLogo} style={styles.logo} resizeMode="contain" />
 
           {/* White Card */}
           <View style={styles.card}>
@@ -100,7 +134,7 @@ export default function LoginScreen({ navigation }) {
               onChangeText={setPassword}
             />
 
-            {/* Error */}
+            {/* 🔴 Inline Error (above the button, per requirement) */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             {/* Login Button */}
