@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
-import OrderDetailModal from '../components/OrderDetailModal';
+import OrderDetailModal from '../screens/OrderDetailModal';
 
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
