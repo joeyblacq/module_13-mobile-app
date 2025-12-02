@@ -48,14 +48,13 @@ export default function LoginScreen({ navigation }) {
 
       if (!response.ok) {
         setError('Invalid email or password.');
-        setSubmitting(false);
         return;
       }
 
       const data = await response.json().catch(() => ({}));
 
-      // Example:
-      // { token: "xxx", roles: ["CUSTOMER"] }
+      // Example expected shape:
+      // { token: "xxx", roles: ["CUSTOMER", "COURIER"] }
       const token = data.token || data.accessToken || null;
       const roles = Array.isArray(data.roles) ? data.roles : [];
 
@@ -67,11 +66,7 @@ export default function LoginScreen({ navigation }) {
       const hasCustomer = roles.includes('CUSTOMER');
       const hasCourier = roles.includes('COURIER');
 
-      // ---------------------------------------------
-      // 🔥 ROLE-BASED ROUTING REQUIREMENTS
-      // ---------------------------------------------
-
-      // ✅ Requirement 1: Customer-only → Customer app
+      // ✅ Customer-only → Customer app
       if (hasCustomer && !hasCourier) {
         navigation.reset({
           index: 0,
@@ -80,7 +75,7 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      // ✅ Requirement 2: Courier-only → Courier app
+      // ✅ Courier-only → Courier app
       if (hasCourier && !hasCustomer) {
         navigation.reset({
           index: 0,
@@ -89,21 +84,17 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      // (Next requirement)
-      // 🚧 BOTH roles → Account Selection (will implement next)
+      // ✅ BOTH roles → Account Selection Page (requirement just added)
       if (hasCustomer && hasCourier) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'AccountSelection' }],
+          routes: [{ name: 'AccountSelection' }], // you define this screen in App.js
         });
         return;
       }
 
-      // Fallback:
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }],
-      });
+      // Fallback: if no roles or unexpected data
+      setError('No valid customer or courier account found for this user.');
     } catch (err) {
       console.log('Login error:', err);
       setError('Unable to reach server. Please try again.');
@@ -150,7 +141,7 @@ export default function LoginScreen({ navigation }) {
               onChangeText={setPassword}
             />
 
-            {/* 🔴 Inline Error */}
+            {/* 🔴 Inline Error (above button) */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             {/* Login Button */}
@@ -173,7 +164,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f5f5', // light gray from wireframe
   },
   container: {
     flex: 1,
@@ -235,7 +226,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: '#D86F52',
+    backgroundColor: '#D86F52', // orange from wireframe
     height: 48,
     borderRadius: 6,
     alignItems: 'center',
