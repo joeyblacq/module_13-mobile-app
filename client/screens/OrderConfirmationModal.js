@@ -1,5 +1,5 @@
 // client/screens/OrderConfirmationModal.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Modal,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 
@@ -22,7 +23,11 @@ const formatCurrency = (amount) => '$' + Number(amount || 0).toFixed(2);
  *  - errorMessage: string
  *  - status?: 'default' | 'processing' | 'success' | 'failure' | 'auto'
  *  - onClose: () => void
- *  - onConfirm: () => void
+ *  - onConfirm: (options?: { sendSMS: boolean; sendEmail: boolean }) => void
+ *
+ * Notification options (new requirement):
+ *  - Users can choose to receive confirmation by Text Message and/or Email.
+ *  - These become boolean flags: sendSMS, sendEmail.
  */
 const OrderConfirmationModal = ({
   visible,
@@ -47,6 +52,24 @@ const OrderConfirmationModal = ({
   const isFailure = status === 'failure';
 
   const hasItems = Array.isArray(orderItems) && orderItems.length > 0;
+
+  // ✅ Notification options state
+  const [sendSMS, setSendSMS] = useState(false);
+  const [sendEmail, setSendEmail] = useState(false);
+
+  // Reset checkboxes whenever the modal is (re)opened
+  useEffect(() => {
+    if (visible) {
+      setSendSMS(false);
+      setSendEmail(false);
+    }
+  }, [visible]);
+
+  const handleConfirmPress = () => {
+    if (!onConfirm) return;
+    // Pass notification booleans to parent
+    onConfirm({ sendSMS, sendEmail });
+  };
 
   return (
     <Modal
@@ -116,8 +139,75 @@ const OrderConfirmationModal = ({
               </Text>
             </View>
 
-            {/* Divider between total and button */}
-            <View style={styles.buttonDivider} />
+            {/* ✅ Notification options (Text + Email checkboxes) */}
+            {!isSuccess && (
+              <View style={styles.notificationSection}>
+                <Text style={styles.notificationTitle}>
+                  Order Confirmation Notifications
+                </Text>
+
+                {/* Text Message option */}
+                <Pressable
+                  style={styles.notificationRow}
+                  onPress={() => setSendSMS((prev) => !prev)}
+                  disabled={isProcessing}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      sendSMS && styles.checkboxChecked,
+                    ]}
+                  >
+                    {sendSMS && (
+                      <FontAwesome
+                        name="check"
+                        size={14}
+                        color="#ffffff"
+                      />
+                    )}
+                  </View>
+                  <View style={styles.notificationTextWrap}>
+                    <Text style={styles.notificationLabel}>
+                      Text Message
+                    </Text>
+                    <Text style={styles.notificationHelper}>
+                      Send order confirmation to my phone.
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {/* Email option */}
+                <Pressable
+                  style={styles.notificationRow}
+                  onPress={() => setSendEmail((prev) => !prev)}
+                  disabled={isProcessing}
+                >
+                  <View
+                    style={[
+                      styles.checkbox,
+                      sendEmail && styles.checkboxChecked,
+                    ]}
+                  >
+                    {sendEmail && (
+                      <FontAwesome
+                        name="check"
+                        size={14}
+                        color="#ffffff"
+                      />
+                    )}
+                  </View>
+                  <View style={styles.notificationTextWrap}>
+                    <Text style={styles.notificationLabel}>Email</Text>
+                    <Text style={styles.notificationHelper}>
+                      Send order confirmation to my email.
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Divider between total/notifications and button */}
+            {!isSuccess && <View style={styles.buttonDivider} />}
 
             {/* MAIN BUTTON */}
             {!isSuccess && (
@@ -126,7 +216,7 @@ const OrderConfirmationModal = ({
                   styles.primaryButton,
                   (isProcessing || !hasItems) && styles.primaryButtonDisabled,
                 ]}
-                onPress={onConfirm}
+                onPress={handleConfirmPress}
                 disabled={isProcessing || !hasItems}
               >
                 {isProcessing ? (
@@ -289,6 +379,47 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
+  // ✅ Notification section
+  notificationSection: {
+    marginTop: 12,
+  },
+  notificationTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  notificationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#6b7280',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    backgroundColor: '#ffffff',
+  },
+  checkboxChecked: {
+    backgroundColor: '#D86F52',
+    borderColor: '#D86F52',
+  },
+  notificationTextWrap: {
+    flex: 1,
+  },
+  notificationLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  notificationHelper: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+
   buttonDivider: {
     height: 16,
   },
@@ -330,7 +461,7 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
 
-  // Success state – centered too (not in the screenshot but nice UX)
+  // Success state – centered too
   successContainer: {
     marginTop: 16,
     alignItems: 'center',
