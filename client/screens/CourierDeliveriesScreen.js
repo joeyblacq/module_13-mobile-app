@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
-import DeliveryDetailModal from '../components/DeliveryDetailModal';
+import OrderDetailModal from '../components/OrderDetailModal';
 
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
@@ -95,7 +95,7 @@ export default function CourierDeliveriesScreen() {
 
       const data = await response.json();
       // Expect something like:
-      // [{ id, address, status, items, total, restaurantName, orderDate, ... }]
+      // [{ id, address, status, items, restaurantId, customerId, ... }]
       setDeliveries(Array.isArray(data) ? data : []);
     } catch (err) {
       console.log('Error loading deliveries:', err);
@@ -234,11 +234,16 @@ export default function CourierDeliveriesScreen() {
         }
       />
 
-      {/* Delivery Detail Modal */}
-      <DeliveryDetailModal
-        visible={detailVisible}
-        delivery={selectedDelivery}
-        onClose={() => setDetailVisible(false)}
+      {/* Delivery Detail Modal – uses OrderDetailModal */}
+      <OrderDetailModal
+        visible={detailVisible && !!selectedDelivery}
+        onClose={() => {
+          setDetailVisible(false);
+          setSelectedDelivery(null);
+        }}
+        orderItems={selectedDelivery?.items || []}
+        restaurantId={selectedDelivery?.restaurantId}
+        customerId={selectedDelivery?.customerId}
       />
     </View>
   );
@@ -255,7 +260,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
-    // fontFamily: 'Oswald-Regular', // uncomment if you have this font loaded
+    // fontFamily: 'Oswald_700Bold', // uncomment if font is loaded in App.js
   },
   tableHeader: {
     flexDirection: 'row',
@@ -329,4 +334,3 @@ const styles = StyleSheet.create({
     color: '#555',
   },
 });
-
