@@ -1,6 +1,6 @@
 // client/App.js
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -13,6 +13,7 @@ import MenuScreen from './screens/MenuScreen';
 import OrderHistoryScreen from './screens/OrderHistoryScreen';
 import AccountSelectionScreen from './screens/AccountSelectionScreen';
 import CourierDeliveriesScreen from './screens/CourierDeliveriesScreen';
+import AccountScreen from './screens/AccountScreen';
 
 // Initialize navigators
 const RootStack = createNativeStackNavigator();
@@ -41,7 +42,7 @@ function RestaurantsStackScreen() {
   );
 }
 
-// Orders tab stack: A simple stack for the Order History screen.
+// Orders tab stack: For the Order History screen.
 function OrdersStackScreen() {
   return (
     <OrdersStack.Navigator>
@@ -54,7 +55,7 @@ function OrdersStackScreen() {
   );
 }
 
-// Bottom tabs (footer) across the main CUSTOMER application after login.
+// Bottom tabs (footer) for CUSTOMER app: 3 tabs (Restaurants, Order History, Account)
 function MainTabs() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
@@ -72,9 +73,19 @@ function MainTabs() {
         name="TabOrders"
         component={OrdersStackScreen}
         options={{
-          title: 'Orders',
+          title: 'Order History',
           tabBarIcon: ({ color, size }) => (
-            <FontAwesome name="list-alt" color={color} size={size} />
+            <FontAwesome name="history" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="TabAccount"
+        component={AccountScreen}
+        options={{
+          title: 'Account',
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome name="user" color={color} size={size} />
           ),
         }}
       />
@@ -84,7 +95,7 @@ function MainTabs() {
 
 // ---------------------- COURIER APP ----------------------
 
-// Courier stack: main "My Deliveries" screen (matches courier wireframe)
+// Courier stack: main "My Deliveries" screen (Delivery History Page)
 function CourierStackScreen() {
   return (
     <CourierStack.Navigator>
@@ -97,8 +108,18 @@ function CourierStackScreen() {
   );
 }
 
-// Courier bottom tabs (footer) – for now only Deliveries tab;
-// you can add an Account tab later when you implement that requirement.
+// Wrapper to reuse AccountScreen for courier role
+function CourierAccountScreenWrapper(props) {
+  // Force role = 'COURIER' so AccountScreen shows courier email/phone
+  const injectedRoute = {
+    ...(props.route || {}),
+    params: { ...(props.route?.params || {}), role: 'COURIER' },
+  };
+
+  return <AccountScreen {...props} route={injectedRoute} />;
+}
+
+// Footer for COURIER app: 2 tabs (Deliveries, Account)
 function CourierMainTabs() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
@@ -109,6 +130,16 @@ function CourierMainTabs() {
           title: 'Deliveries',
           tabBarIcon: ({ color, size }) => (
             <FontAwesome name="history" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="CourierTabAccount"
+        component={CourierAccountScreenWrapper}
+        options={{
+          title: 'Account',
+          tabBarIcon: ({ color, size }) => (
+            <FontAwesome name="user" color={color} size={size} />
           ),
         }}
       />
@@ -155,7 +186,6 @@ export default function App() {
     checkAuth();
   }, []);
 
-  // Show a loading indicator while checking for the auth token & roles.
   if (!initialRoute) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -166,30 +196,30 @@ export default function App() {
 
   return (
     <NavigationContainer>
-      {/* Root navigator handles login, customer app, courier app, and account selection. */}
+      {/* Header/Footer nav is present on all app screens except Login + AccountSelection */}
       <RootStack.Navigator initialRouteName={initialRoute}>
-        {/* Login screen */}
+        {/* Login screen – NO header/footer */}
         <RootStack.Screen
           name="Login"
           component={LoginScreen}
           options={{ headerShown: false }}
         />
 
-        {/* Customer app root */}
+        {/* Customer app root (with footer nav) */}
         <RootStack.Screen
           name="Main"
           component={MainTabs}
           options={{ headerShown: false }}
         />
 
-        {/* Courier app root */}
+        {/* Courier app root (with footer nav) */}
         <RootStack.Screen
           name="CourierMain"
           component={CourierMainTabs}
           options={{ headerShown: false }}
         />
 
-        {/* Account Selection page for dual-role users */}
+        {/* Account selection – special case: no header/footer */}
         <RootStack.Screen
           name="AccountSelection"
           component={AccountSelectionScreen}
