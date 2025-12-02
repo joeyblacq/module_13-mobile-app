@@ -12,6 +12,7 @@ import RestaurantsScreen from './screens/RestaurantsScreen';
 import MenuScreen from './screens/MenuScreen';
 import OrderHistoryScreen from './screens/OrderHistoryScreen';
 import AccountSelectionScreen from './screens/AccountSelectionScreen';
+import CourierDeliveriesScreen from './screens/CourierDeliveriesScreen';
 
 // Initialize navigators
 const RootStack = createNativeStackNavigator();
@@ -81,29 +82,23 @@ function MainTabs() {
   );
 }
 
-// ---------------------- COURIER APP (placeholder for now) ----------------------
+// ---------------------- COURIER APP ----------------------
 
-// Simple placeholder screen for Courier app until you build the real one
-function CourierHomePlaceholder() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Courier App - Deliveries Screen (to be implemented)</Text>
-    </View>
-  );
-}
-
+// Courier stack: main "My Deliveries" screen (matches courier wireframe)
 function CourierStackScreen() {
   return (
     <CourierStack.Navigator>
       <CourierStack.Screen
         name="CourierHome"
-        component={CourierHomePlaceholder}
-        options={{ headerTitle: 'Courier Deliveries' }}
+        component={CourierDeliveriesScreen}
+        options={{ headerTitle: 'My Deliveries' }}
       />
     </CourierStack.Navigator>
   );
 }
 
+// Courier bottom tabs (footer) – for now only Deliveries tab;
+// you can add an Account tab later when you implement that requirement.
 function CourierMainTabs() {
   return (
     <Tabs.Navigator screenOptions={{ headerShown: false }}>
@@ -113,7 +108,7 @@ function CourierMainTabs() {
         options={{
           title: 'Deliveries',
           tabBarIcon: ({ color, size }) => (
-            <FontAwesome name="truck" color={color} size={size} />
+            <FontAwesome name="history" color={color} size={size} />
           ),
         }}
       />
@@ -124,8 +119,8 @@ function CourierMainTabs() {
 // ---------------------- ROOT APP ----------------------
 
 export default function App() {
-  // State to determine the initial screen based on authentication + roles.
-  const [initialRoute, setInitialRoute] = useState(null); // 'Login' | 'Main' | 'CourierMain' | 'AccountSelection'
+  // 'Login' | 'Main' | 'CourierMain' | 'AccountSelection'
+  const [initialRoute, setInitialRoute] = useState(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -137,7 +132,6 @@ export default function App() {
           return;
         }
 
-        // Try to respect saved roles for returning users
         const rawRoles = await AsyncStorage.getItem('roles');
         const roles = rawRoles ? JSON.parse(rawRoles) : [];
         const hasCustomer = roles.includes('CUSTOMER');
@@ -150,18 +144,18 @@ export default function App() {
         } else if (hasCourier && !hasCustomer) {
           setInitialRoute('CourierMain');
         } else {
-          // Fallback: token but no valid roles
+          // Fallback: token but no recognized roles
           setInitialRoute('Main');
         }
       } catch {
-        // Default to Login if AsyncStorage fails.
         setInitialRoute('Login');
       }
     };
+
     checkAuth();
   }, []);
 
-  // Show a loading indicator while checking for the auth token.
+  // Show a loading indicator while checking for the auth token & roles.
   if (!initialRoute) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -174,7 +168,7 @@ export default function App() {
     <NavigationContainer>
       {/* Root navigator handles login, customer app, courier app, and account selection. */}
       <RootStack.Navigator initialRouteName={initialRoute}>
-        {/* Login screen: No header, no footer tabs. */}
+        {/* Login screen */}
         <RootStack.Screen
           name="Login"
           component={LoginScreen}
