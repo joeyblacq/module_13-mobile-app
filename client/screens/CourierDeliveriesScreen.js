@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
+import DeliveryDetailModal from '../components/DeliveryDetailModal';
 
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
@@ -61,6 +62,10 @@ export default function CourierDeliveriesScreen() {
   const [updatingId, setUpdatingId] = useState(null);
   const [error, setError] = useState('');
 
+  // Detail modal state
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
+
   const loadDeliveries = useCallback(async () => {
     if (!API_BASE) {
       setError('Missing API base URL.');
@@ -90,7 +95,7 @@ export default function CourierDeliveriesScreen() {
 
       const data = await response.json();
       // Expect something like:
-      // [{ id, address, status, ... }]
+      // [{ id, address, status, items, total, restaurantName, orderDate, ... }]
       setDeliveries(Array.isArray(data) ? data : []);
     } catch (err) {
       console.log('Error loading deliveries:', err);
@@ -110,7 +115,8 @@ export default function CourierDeliveriesScreen() {
     const nextStatus = getNextStatus(status);
 
     if (!nextStatus) {
-      return; // DELIVERED or unknown → no further updates
+      // DELIVERED or unknown → no further updates
+      return;
     }
 
     if (!API_BASE) {
@@ -132,7 +138,7 @@ export default function CourierDeliveriesScreen() {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ status: nextStatus }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -140,30 +146,14 @@ export default function CourierDeliveriesScreen() {
         return;
       }
 
-      // Option 1: trust API and re-fetch everything (safest for DB truth)
+      // Re-fetch from API so DB is source of truth
       await loadDeliveries();
-
-      // Option 2 (if you prefer): update local state only:
-      // setDeliveries((prev) =>
-      //   prev.map((d) =>
-      //     d.id === id ? { ...d, status: nextStatus } : d
-      //   )
-      // );
     } catch (err) {
       console.log('Error updating status:', err);
       Alert.alert('Error', 'Unable to update status. Please try again.');
     } finally {
       setUpdatingId(null);
     }
-  };
-
-  const handleViewDetails = (delivery) => {
-    // This will be wired to the Delivery Details modal requirement later.
-    // For now, just show a simple message so you know it's hooked up.
-    Alert.alert(
-      'Delivery Details',
-      `Order #${delivery.id}\nAddress: ${delivery.address}`
-    );
   };
 
   const renderRow = ({ item }) => {
@@ -198,7 +188,12 @@ export default function CourierDeliveriesScreen() {
           </Pressable>
         </View>
         <View style={[styles.cell, styles.viewCell]}>
-          <Pressable onPress={() => handleViewDetails(item)}>
+          <Pressable
+            onPress={() => {
+              setSelectedDelivery(item);
+              setDetailVisible(true);
+            }}
+          >
             <FontAwesome name="search" size={18} color="#000" />
           </Pressable>
         </View>
@@ -238,6 +233,13 @@ export default function CourierDeliveriesScreen() {
           <Text style={styles.emptyText}>No deliveries to display.</Text>
         }
       />
+
+      {/* Delivery Detail Modal */}
+      <DeliveryDetailModal
+        visible={detailVisible}
+        delivery={selectedDelivery}
+        onClose={() => setDetailVisible(false)}
+      />
     </View>
   );
 }
@@ -253,7 +255,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 12,
-    fontFamily: 'Oswald-Regular', // if you have it loaded, otherwise remove
+    // fontFamily: 'Oswald-Regular', // uncomment if you have this font loaded
   },
   tableHeader: {
     flexDirection: 'row',
@@ -327,3 +329,4 @@ const styles = StyleSheet.create({
     color: '#555',
   },
 });
+
