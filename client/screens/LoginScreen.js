@@ -19,7 +19,10 @@ import RocketLogo from '../assets/Images/AppLogoV1.png';
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('erica.ger@gmail.com');
+  // const [email, setEmail] = useState('both@gmail.com');
+  //  const [email, setEmail] = useState('customer@gmail.com')
+  const [email, setEmail] = useState('courier@gmail.com')
+  
   const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
