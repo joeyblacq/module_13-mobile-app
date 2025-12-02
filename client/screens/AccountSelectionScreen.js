@@ -11,19 +11,18 @@ import {
 
 export default function AccountSelectionScreen({ navigation }) {
   const handleSelectCustomer = () => {
-    // ✅ Requirement:
-    // Selecting the customer account directs the user to the customer application.
+    // Customer → Customer app
     navigation.reset({
       index: 0,
-      routes: [{ name: 'Main' }], // Customer app root (same as in LoginScreen)
+      routes: [{ name: 'Main' }],
     });
   };
 
   const handleSelectCourier = () => {
-    // This will satisfy the "courier selection" requirement when you get to it
+    // Courier → Courier app (Requirement)
     navigation.reset({
       index: 0,
-      routes: [{ name: 'CourierMain' }], // Courier app root
+      routes: [{ name: 'CourierMain' }],
     });
   };
 
@@ -36,20 +35,30 @@ export default function AccountSelectionScreen({ navigation }) {
         <View style={styles.card}>
           <Text style={styles.title}>Select Account</Text>
           <Text style={styles.subtitle}>
-            This login has both Customer and Courier accounts.  
+            Your login has both Customer and Courier accounts.  
             Choose how you want to continue.
           </Text>
 
-          {/* Customer Account Button */}
-          <Pressable style={[styles.button, styles.customerButton]} onPress={handleSelectCustomer}>
+          {/* Customer Button */}
+          <Pressable
+            style={[styles.button, styles.customerButton]}
+            onPress={handleSelectCustomer}
+          >
             <Text style={styles.buttonTitle}>Continue as Customer</Text>
-            <Text style={styles.buttonSubtitle}>Browse restaurants and place orders</Text>
+            <Text style={styles.buttonSubtitle}>
+              Browse restaurants and place orders
+            </Text>
           </Pressable>
 
-          {/* Courier Account Button */}
-          <Pressable style={[styles.button, styles.courierButton]} onPress={handleSelectCourier}>
+          {/* Courier Button */}
+          <Pressable
+            style={[styles.button, styles.courierButton]}
+            onPress={handleSelectCourier}
+          >
             <Text style={styles.buttonTitle}>Continue as Courier</Text>
-            <Text style={styles.buttonSubtitle}>View and manage deliveries</Text>
+            <Text style={styles.buttonSubtitle}>
+              View and manage deliveries
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -60,7 +69,7 @@ export default function AccountSelectionScreen({ navigation }) {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#f5f5f5', // match login background
+    backgroundColor: '#f5f5f5',
   },
   container: {
     flex: 1,
@@ -97,10 +106,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   customerButton: {
-    backgroundColor: '#0a65a0', // blue for customer
+    backgroundColor: '#0a65a0', // blue (Customer)
   },
   courierButton: {
-    backgroundColor: '#D86F52', // orange for courier
+    backgroundColor: '#D86F52', // orange (Courier)
   },
   buttonTitle: {
     color: '#ffffff',
