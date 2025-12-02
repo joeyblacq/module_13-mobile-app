@@ -9,7 +9,10 @@ import {
   Pressable,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import OrderConfirmationModal from '../screens/OrderConfirmationModal';
+
+const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
 const formatCurrency = (amount) => '$' + Number(amount || 0).toFixed(2);
 
@@ -22,6 +25,11 @@ const OrderDetailModal = ({
 }) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  // State for confirmation (used by OrderConfirmationModal)
+  const [confirmProcessing, setConfirmProcessing] = useState(false);
+  const [confirmError, setConfirmError] = useState('');
+  const [confirmStatus, setConfirmStatus] = useState('default'); // 'default' | 'processing' | 'success' | 'failure'
+
   const totalPrice = orderItems.reduce(
     (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
     0,
@@ -33,9 +41,84 @@ const OrderDetailModal = ({
     qty: item.quantity || 0,
   }));
 
-  const handleClose = () => {
+  const handleCloseDetailOnly = () => {
     setShowConfirmation(false);
+    setConfirmProcessing(false);
+    setConfirmError('');
+    setConfirmStatus('default');
     onClose && onClose();
+  };
+
+  // Close handler for the confirmation modal
+  const handleConfirmationClose = () => {
+    setShowConfirmation(false);
+
+    // If success, also close the detail modal
+    if (confirmStatus === 'success') {
+      handleCloseDetailOnly();
+    }
+  };
+
+  // Final confirm from OrderConfirmationModal (with sendSMS & sendEmail)
+  const handleFinalConfirm = async ({ sendSMS, sendEmail } = {}) => {
+    if (!API_BASE) {
+      setConfirmError('Missing API base URL.');
+      setConfirmStatus('failure');
+      return;
+    }
+
+    // Basic validation
+    if (!restaurantId || !customerId) {
+      setConfirmError('Missing restaurant or customer information.');
+      setConfirmStatus('failure');
+      return;
+    }
+
+    setConfirmProcessing(true);
+    setConfirmError('');
+    setConfirmStatus('processing');
+
+    try {
+      const token = await AsyncStorage.getItem('auth_token');
+
+      // Build order payload, including notification flags
+      const payload = {
+        restaurantId,
+        customerId,
+        items: orderItems.map((item) => ({
+          menuItemId: item.id,
+          quantity: item.quantity || 0,
+        })),
+        sendSMS: !!sendSMS,
+        sendEmail: !!sendEmail,
+      };
+
+      const response = await fetch(`${API_BASE}/api/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        setConfirmError('Failed to create order. Please try again.');
+        setConfirmStatus('failure');
+        return;
+      }
+
+      // Optionally read returned order if needed:
+      // const createdOrder = await response.json();
+
+      setConfirmStatus('success');
+    } catch (err) {
+      console.log('Error creating order:', err);
+      setConfirmError('Unable to create order. Please try again.');
+      setConfirmStatus('failure');
+    } finally {
+      setConfirmProcessing(false);
+    }
   };
 
   return (
@@ -44,14 +127,14 @@ const OrderDetailModal = ({
         visible={visible}
         transparent
         animationType="fade"
-        onRequestClose={onClose}
+        onRequestClose={handleCloseDetailOnly}
       >
         <View className="backdrop" style={styles.backdrop}>
           <View style={styles.card}>
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Order Details</Text>
-              <Pressable onPress={onClose} style={styles.headerIconWrap}>
+              <Pressable onPress={handleCloseDetailOnly} style={styles.headerIconWrap}>
                 <FontAwesome name="close" size={18} color="#ffffff" />
               </Pressable>
             </View>
@@ -93,13 +176,17 @@ const OrderDetailModal = ({
 
               {/* Buttons */}
               <View style={styles.actionsRow}>
-                <Pressable style={styles.secondaryButton} onPress={onClose}>
+                <Pressable style={styles.secondaryButton} onPress={handleCloseDetailOnly}>
                   <Text style={styles.secondaryButtonText}>CANCEL</Text>
                 </Pressable>
 
                 <Pressable
                   style={styles.primaryButton}
-                  onPress={() => setShowConfirmation(true)}
+                  onPress={() => {
+                    setConfirmStatus('default');
+                    setConfirmError('');
+                    setShowConfirmation(true);
+                  }}
                   disabled={orderItems.length === 0}
                 >
                   <Text style={styles.primaryButtonText}>CONFIRM ORDER</Text>
@@ -110,18 +197,16 @@ const OrderDetailModal = ({
         </View>
       </Modal>
 
-      {/* Uses the new styled OrderConfirmationModal */}
+      {/* Uses the updated OrderConfirmationModal with notifications */}
       <OrderConfirmationModal
         visible={showConfirmation}
         orderItems={confirmationItems}
         subtotal={totalPrice}
-        status="auto"
-        onClose={() => setShowConfirmation(false)}
-        onConfirm={() => {
-          console.log('Order confirmed from OrderDetailModal');
-          setShowConfirmation(false);
-          onClose && onClose();
-        }}
+        processing={confirmProcessing}
+        errorMessage={confirmError}
+        status={confirmStatus === 'default' ? 'auto' : confirmStatus}
+        onClose={handleConfirmationClose}
+        onConfirm={handleFinalConfirm}
       />
     </>
   );
