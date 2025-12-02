@@ -47,49 +47,65 @@ export default function LoginScreen({ navigation }) {
       });
 
       if (!response.ok) {
-        // ❌ Incorrect credentials → inline error ABOVE the button
         setError('Invalid email or password.');
+        setSubmitting(false);
         return;
       }
 
-      // ✅ Parse login response
-      // Expected shape (example):
-      // { token: "jwt-token", roles: ["CUSTOMER"] }
       const data = await response.json().catch(() => ({}));
 
-      const token =
-        data.token || data.accessToken || null; // be flexible on field name
+      // Example:
+      // { token: "xxx", roles: ["CUSTOMER"] }
+      const token = data.token || data.accessToken || null;
       const roles = Array.isArray(data.roles) ? data.roles : [];
 
-      // Store token & roles if present
       if (token) {
         await AsyncStorage.setItem('auth_token', token);
       }
-      if (roles.length > 0) {
-        await AsyncStorage.setItem('roles', JSON.stringify(roles));
-      }
+      await AsyncStorage.setItem('roles', JSON.stringify(roles));
 
       const hasCustomer = roles.includes('CUSTOMER');
       const hasCourier = roles.includes('COURIER');
 
-      // ✅ Requirement:
-      // If the user has ONLY a customer account, direct them to the Customer app.
+      // ---------------------------------------------
+      // 🔥 ROLE-BASED ROUTING REQUIREMENTS
+      // ---------------------------------------------
+
+      // ✅ Requirement 1: Customer-only → Customer app
       if (hasCustomer && !hasCourier) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Main' }], // 'Main' is your existing Customer app root
+          routes: [{ name: 'Main' }], // Customer app root
         });
         return;
       }
 
-      // For now, for any other case (no roles / courier / both),
-      // just fall back to Main until we implement the next requirements.
+      // ✅ Requirement 2: Courier-only → Courier app
+      if (hasCourier && !hasCustomer) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'CourierMain' }], // Courier app root
+        });
+        return;
+      }
+
+      // (Next requirement)
+      // 🚧 BOTH roles → Account Selection (will implement next)
+      if (hasCustomer && hasCourier) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AccountSelection' }],
+        });
+        return;
+      }
+
+      // Fallback:
       navigation.reset({
         index: 0,
         routes: [{ name: 'Main' }],
       });
     } catch (err) {
-      console.error('Login error:', err);
+      console.log('Login error:', err);
       setError('Unable to reach server. Please try again.');
     } finally {
       setSubmitting(false);
@@ -134,7 +150,7 @@ export default function LoginScreen({ navigation }) {
               onChangeText={setPassword}
             />
 
-            {/* 🔴 Inline Error (above the button, per requirement) */}
+            {/* 🔴 Inline Error */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             {/* Login Button */}
@@ -157,7 +173,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#f5f5f5', // light gray from wireframe
+    backgroundColor: '#f5f5f5',
   },
   container: {
     flex: 1,
@@ -219,7 +235,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    backgroundColor: '#D86F52', // orange from wireframe
+    backgroundColor: '#D86F52',
     height: 48,
     borderRadius: 6,
     alignItems: 'center',
