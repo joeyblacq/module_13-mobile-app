@@ -17,9 +17,11 @@ const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 /**
  * AccountScreen
  *
- * Props:
- *  - route.params.role? : 'CUSTOMER' | 'COURIER' (optional)
- *  - navigation
+ * Used in BOTH apps:
+ *  - Customer tabs → pass role = 'CUSTOMER'
+ *  - Courier tabs  → pass role = 'COURIER'
+ *
+ * We read userId from AsyncStorage (set at login).
  */
 export default function AccountScreen({ route }) {
   const [primaryEmail, setPrimaryEmail] = useState('');
@@ -34,26 +36,10 @@ export default function AccountScreen({ route }) {
 
   // Decide current role (Customer or Courier)
   const resolveRole = useCallback(async () => {
-    // 1) If passed explicitly via route params, use that.
     if (route?.params?.role === 'COURIER' || route?.params?.role === 'CUSTOMER') {
       setRole(route.params.role);
       return route.params.role;
     }
-
-    // 2) Else, look at saved roles in AsyncStorage
-    const rawRoles = await AsyncStorage.getItem('roles');
-    const roles = rawRoles ? JSON.parse(rawRoles) : [];
-
-    if (roles.includes('CUSTOMER') && !roles.includes('COURIER')) {
-      setRole('CUSTOMER');
-      return 'CUSTOMER';
-    }
-    if (roles.includes('COURIER') && !roles.includes('CUSTOMER')) {
-      setRole('COURIER');
-      return 'COURIER';
-    }
-
-    // 3) If both or none, default to CUSTOMER for the Customer app.
     setRole('CUSTOMER');
     return 'CUSTOMER';
   }, [route]);
@@ -70,8 +56,7 @@ export default function AccountScreen({ route }) {
     setLoading(true);
 
     try {
-      const token = await AsyncStorage.getItem('auth_token');
-      const userId = await AsyncStorage.getItem('userId'); // ensure you store this at login
+      const userId = await AsyncStorage.getItem('userId');
       if (!userId) {
         setError('Missing account id (userId) in storage.');
         setLoading(false);
@@ -79,18 +64,13 @@ export default function AccountScreen({ route }) {
       }
 
       const currentRole = await resolveRole();
-      const userType = currentRole === 'COURIER' ? 'courier' : 'customer';
 
-      const response = await fetch(
-        `${API_BASE}/api/account/${userId}?type=${userType}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE}/api/account/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         setError('Failed to load account details.');
@@ -100,30 +80,22 @@ export default function AccountScreen({ route }) {
 
       const data = await response.json();
 
-      // Be flexible with field names from the API:
-      const userEmail =
-        data.userEmail ||
-        data.primaryEmail ||
-        data.email ||
-        '';
+      // Fields from AccountResponseDTO
+      const primary = data?.primaryEmail ?? '';
+      const customerEmail = data?.customerEmail ?? '';
+      const customerPhone = data?.customerPhone ?? '';
+      const courierEmail = data?.courierEmail ?? '';
+      const courierPhone = data?.courierPhone ?? '';
 
-      const userTypeEmail =
-        data.userTypeEmail ||
-        data.typeEmail ||
-        data.customerEmail ||
-        data.courierEmail ||
-        '';
+      setPrimaryEmail(primary);
 
-      const userTypePhone =
-        data.userTypePhone ||
-        data.typePhone ||
-        data.customerPhone ||
-        data.courierPhone ||
-        '';
-
-      setPrimaryEmail(userEmail);
-      setTypeEmail(userTypeEmail);
-      setTypePhone(userTypePhone);
+      if (currentRole === 'COURIER') {
+        setTypeEmail(courierEmail);
+        setTypePhone(courierPhone);
+      } else {
+        setTypeEmail(customerEmail);
+        setTypePhone(customerPhone);
+      }
     } catch (err) {
       console.log('Error loading account:', err);
       setError('Unable to load account details. Please try again.');
@@ -152,7 +124,6 @@ export default function AccountScreen({ route }) {
     setInfoMessage('');
 
     try {
-      const token = await AsyncStorage.getItem('auth_token');
       const userId = await AsyncStorage.getItem('userId');
       if (!userId) {
         setError('Missing account id (userId) in storage.');
@@ -161,19 +132,26 @@ export default function AccountScreen({ route }) {
       }
 
       const currentRole = role;
-      const userType = currentRole === 'COURIER' ? 'courier' : 'customer';
+
+      // Match AccountUpdateDTO:
+      // customerEmail, customerPhone, courierEmail, courierPhone
+      const payload =
+        currentRole === 'COURIER'
+          ? {
+              courierEmail: typeEmail.trim(),
+              courierPhone: typePhone.trim(),
+            }
+          : {
+              customerEmail: typeEmail.trim(),
+              customerPhone: typePhone.trim(),
+            };
 
       const response = await fetch(`${API_BASE}/api/account/${userId}`, {
-        method: 'POST', // per spec: POST /api/account/{id}
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          type: userType,        // include type for clarity (if backend expects it)
-          email: typeEmail.trim(), // user-type email
-          phone: typePhone.trim(), // user-type phone
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -223,11 +201,9 @@ export default function AccountScreen({ route }) {
           </Text>
         </View>
 
-        {/* User-type Email (Customer/Courier) */}
+        {/* User-type Email */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            {roleLabel} Email:
-          </Text>
+          <Text style={styles.label}>{roleLabel} Email:</Text>
           <TextInput
             style={styles.input}
             value={typeEmail}
@@ -243,9 +219,7 @@ export default function AccountScreen({ route }) {
 
         {/* User-type Phone */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>
-            {roleLabel} Phone:
-          </Text>
+          <Text style={styles.label}>{roleLabel} Phone:</Text>
           <TextInput
             style={styles.input}
             value={typePhone}
@@ -260,9 +234,7 @@ export default function AccountScreen({ route }) {
 
         {/* Error / Info */}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {infoMessage ? (
-          <Text style={styles.infoText}>{infoMessage}</Text>
-        ) : null}
+        {infoMessage ? <Text style={styles.infoText}>{infoMessage}</Text> : null}
 
         {/* Update Button */}
         <Pressable
@@ -340,7 +312,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   button: {
-    backgroundColor: '#D86F52', // orange from wireframe
+    backgroundColor: '#D86F52',
     height: 48,
     borderRadius: 6,
     alignItems: 'center',
