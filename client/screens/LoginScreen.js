@@ -19,10 +19,10 @@ import RocketLogo from '../assets/Images/AppLogoV1.png';
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
 export default function LoginScreen({ navigation }) {
-  // const [email, setEmail] = useState('both@gmail.com');
-   const [email, setEmail] = useState('customer@gmail.com')
-  // const [email, setEmail] = useState('courier@gmail.com')
-  
+  const [email, setEmail] = useState('both@gmail.com');
+  // const [email, setEmail] = useState('customer@gmail.com');
+  // const [email, setEmail] = useState('courier@gmail.com');
+
   const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -56,47 +56,62 @@ export default function LoginScreen({ navigation }) {
 
       const data = await response.json().catch(() => ({}));
 
-      // Example expected shape:
-      // { token: "xxx", roles: ["CUSTOMER", "COURIER"] }
-      const token = data.token || data.accessToken || null;
-      const roles = Array.isArray(data.roles) ? data.roles : [];
+      // 🔹 Build roles from the IDs the backend actually returns
+      // Backend response (from AuthController) looks like:
+      // { success: true, user_id: 1, customer_id: 2, courier_id: 3 }
+      const roles = [];
+      if (data.customer_id) {
+        roles.push('CUSTOMER');
+      }
+      if (data.courier_id) {
+        roles.push('COURIER');
+      }
 
+      // 🔹 Save userId for AccountScreen (/api/account/{id})
+      if (data.user_id) {
+        await AsyncStorage.setItem('userId', String(data.user_id));
+      }
+
+      // 🔹 Token support (optional – if you later add JWT)
+      const token = data.token || data.accessToken || null;
       if (token) {
         await AsyncStorage.setItem('auth_token', token);
       }
+
+      // Save roles so AccountSelection/AccountScreen can use them
       await AsyncStorage.setItem('roles', JSON.stringify(roles));
 
       const hasCustomer = roles.includes('CUSTOMER');
       const hasCourier = roles.includes('COURIER');
 
-      // ✅ Customer-only → Customer app
+      // ✅ Scenario 1: Customer-only → Customer app
       if (hasCustomer && !hasCourier) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Main' }], // Customer app root
+          routes: [{ name: 'CustomerMain' }], // must match App.js
         });
         return;
       }
 
-      // ✅ Courier-only → Courier app
+      // ✅ Scenario 2: Courier-only → Courier app
       if (hasCourier && !hasCustomer) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'CourierMain' }], // Courier app root
+          routes: [{ name: 'CourierMain' }], // must match App.js
         });
         return;
       }
 
-      // ✅ BOTH roles → Account Selection Page (requirement just added)
+      // ✅ Scenario 3: Both roles → Account Selection Page
       if (hasCustomer && hasCourier) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'AccountSelection' }], // you define this screen in App.js
+          routes: [{ name: 'AccountSelection' }],
         });
         return;
       }
 
-      // Fallback: if no roles or unexpected data
+      // ❌ Fallback: no matching customer/courier rows in DB
       setError('No valid customer or courier account found for this user.');
     } catch (err) {
       console.log('Login error:', err);
