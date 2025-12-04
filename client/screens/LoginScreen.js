@@ -20,8 +20,8 @@ const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
 export default function LoginScreen({ navigation }) {
   // const [email, setEmail] = useState('both@gmail.com');
-  // const [email, setEmail] = useState('customer@gmail.com');
-  const [email, setEmail] = useState('courier@gmail.com');
+  const [email, setEmail] = useState('customer@gmail.com');
+  // const [email, setEmail] = useState('courier@gmail.com');
 
   const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
@@ -56,9 +56,7 @@ export default function LoginScreen({ navigation }) {
 
       const data = await response.json().catch(() => ({}));
 
-      // 🔹 Build roles from the IDs the backend actually returns
-      // Backend response (from AuthController) looks like:
-      // { success: true, user_id: 1, customer_id: 2, courier_id: 3 }
+      // Build roles from IDs the backend returns
       const roles = [];
       if (data.customer_id) {
         roles.push('CUSTOMER');
@@ -67,12 +65,12 @@ export default function LoginScreen({ navigation }) {
         roles.push('COURIER');
       }
 
-      // 🔹 Save userId for AccountScreen (/api/account/{id})
+      // Save userId for AccountScreen (/api/account/{id})
       if (data.user_id) {
         await AsyncStorage.setItem('userId', String(data.user_id));
       }
 
-      // 🔹 Token support (optional – if you later add JWT)
+      // Token support (optional – if you later add JWT)
       const token = data.token || data.accessToken || null;
       if (token) {
         await AsyncStorage.setItem('auth_token', token);
@@ -88,7 +86,7 @@ export default function LoginScreen({ navigation }) {
       if (hasCustomer && !hasCourier) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'CustomerMain' }], // must match App.js
+          routes: [{ name: 'Main' }], // ✅ MUST match App.js
         });
         return;
       }
@@ -97,7 +95,7 @@ export default function LoginScreen({ navigation }) {
       if (hasCourier && !hasCustomer) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'CourierMain' }], // must match App.js
+          routes: [{ name: 'CourierMain' }],
         });
         return;
       }
@@ -182,7 +180,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#f5f5f5', // light gray from wireframe
+    backgroundColor: '#f5f5f5',
   },
   container: {
     flex: 1,
@@ -190,13 +188,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   logo: {
     width: 220,
     height: 110,
     marginBottom: 20,
   },
-
   card: {
     width: '100%',
     backgroundColor: '#fff',
@@ -208,7 +204,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-
   cardTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -219,13 +214,11 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 20,
   },
-
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
   },
-
   input: {
     height: 46,
     borderWidth: 1,
@@ -235,16 +228,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 14,
   },
-
   errorText: {
     color: '#b00020',
     marginBottom: 12,
     textAlign: 'center',
     fontWeight: '600',
   },
-
   button: {
-    backgroundColor: '#D86F52', // orange from wireframe
+    backgroundColor: '#D86F52',
     height: 48,
     borderRadius: 6,
     alignItems: 'center',
