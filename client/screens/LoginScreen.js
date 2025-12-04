@@ -55,13 +55,67 @@ export default function LoginScreen({ navigation }) {
       }
 
       const data = await response.json().catch(() => ({}));
+      console.log('Login response data:', data);
 
       // --------------------------
       // Build roles from IDs
       // --------------------------
+
+      /* 
+      The response of the fetch is an object like this: 
+
+      both@gmail.com
+      {
+        "accessToken": null,
+        "success": true,
+        "user_id": 1,
+        "customer_id": 1,
+        "courier_id": 1
+      }
+
+      customer@gmail.com
+      {
+        "accessToken": null,
+        "success": true,
+        "user_id": 2,
+        "customer_id": 2,
+        "courier_id": 0 (means that user, doesn't have any courier id)
+      }
+
+      courier@gmail.com
+      {
+        "accessToken": null,
+        "success": true,
+        "user_id": 3,
+        "customer_id": 0, (means that user, doesn't have any courier id)
+        "courier_id": 2 
+      }
+      
+      
+      THIS IS AN EXAMPLE, YOU MAY OR NOT USING IT, SO ADAPT TO YOUR NEEDS OR IGNORE IT COMPLETELY
+      --------------- LOGIC EXAMPLE -----------------
+      if (data.courier_id != 0 && data.customer != 0) {
+          means its a user with both customer and courier id
+          could do your AsyncStorage to store some data (role?? + userId + customer id + courier id)
+          after you navigate to selection
+      } else if (data.customer_id != 0 && data.courier_id == 0) {
+          means its a user as customer id
+          could do your AsyncStorage to store some data (role + userId + customer id)
+          after your navigate to customer app
+      } else {
+          means its a user as courier id
+          could do your AsyncStorage to store some data (role + userId + courier id)
+          after your navigate to courier app
+       }
+      ------------------------------------------------
+      */
+
+      
       const roles = [];
-      if (data.customer_id) roles.push('CUSTOMER');
-      if (data.courier_id) roles.push('COURIER');
+
+      // instead of just an if, use if else if else...
+      if (data.customer_id) roles.push('customer'); // careful, its not true because customer_id coulde be 0 and 0 is a considered as a number.
+      if (data.courier_id) roles.push('courier'); // careful, its not true because courier_id coulde be 0 and 0 is a considered as a number.
 
       // --------------------------
       // Store user_id
@@ -74,9 +128,11 @@ export default function LoginScreen({ navigation }) {
       // Store customer_id & courier_id
       // --------------------------
       if (data.customer_id) {
+        // here you want to store both, the role + id associated to that role.
         await AsyncStorage.setItem('customerId', String(data.customer_id));
       }
       if (data.courier_id) {
+        // here you want to store both, the role + id associated to that role.
         await AsyncStorage.setItem('courierId', String(data.courier_id));
       }
 
@@ -93,15 +149,15 @@ export default function LoginScreen({ navigation }) {
       // --------------------------
       await AsyncStorage.setItem('roles', JSON.stringify(roles));
 
-      const hasCustomer = roles.includes('CUSTOMER');
-      const hasCourier = roles.includes('COURIER');
+      const hascustomer = roles.includes('customer');
+      const hascourier = roles.includes('courier');
 
       // --------------------------
       // Navigation Logic
       // --------------------------
 
-      // Customer ONLY → Customer Tabs
-      if (hasCustomer && !hasCourier) {
+      // customer ONLY → customer Tabs
+      if (hascustomer && !hascourier) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Main' }], // MUST match App.js
@@ -109,17 +165,17 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      // Courier ONLY → Courier Tabs
-      if (hasCourier && !hasCustomer) {
+      // courier ONLY → courier Tabs
+      if (hascourier && !hascustomer) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'CourierMain' }],
+          routes: [{ name: 'courierMain' }],
         });
         return;
       }
 
       // Both roles → choose account screen
-      if (hasCustomer && hasCourier) {
+      if (hascustomer && hascourier) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'AccountSelection' }],
