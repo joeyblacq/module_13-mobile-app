@@ -18,7 +18,7 @@ import AccountSelectionScreen from './screens/AccountSelectionScreen';
 import RestaurantsScreen from './screens/RestaurantsScreen';
 import MenuScreen from './screens/MenuScreen';
 import OrderHistoryScreen from './screens/OrderHistoryScreen';
-import CourierDeliveriesScreen from './screens/CourierDeliveriesScreen';
+import CourierDeliveriesScreen from './screens/CourierDeliveriesScreen'; // 👈 FIXED
 import AccountScreen from './screens/AccountScreen';
 
 // Navigators
@@ -45,7 +45,7 @@ function CustomerTabsScreen() {
   return (
     <CustomerTabs.Navigator
       screenOptions={({ route }) => ({
-        headerShown: false, // header is built inside each screen (logo + logout)
+        headerShown: false,
         tabBarActiveTintColor: '#0a65a0',
         tabBarInactiveTintColor: '#000000',
         tabBarStyle: {
@@ -57,7 +57,7 @@ function CustomerTabsScreen() {
           fontSize: 11,
           fontFamily: 'Oswald_400Regular',
         },
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ color, size }) => {
           let iconName = 'circle';
 
           if (route.name === 'Restaurants') iconName = 'cutlery';
@@ -82,7 +82,6 @@ function CustomerTabsScreen() {
         name="Account"
         component={AccountScreen}
         options={{ title: 'Account' }}
-        // 👇 tells AccountScreen to behave as CUSTOMER account page
         initialParams={{ role: 'CUSTOMER' }}
       />
     </CustomerTabs.Navigator>
@@ -106,7 +105,7 @@ function CourierTabsScreen() {
           fontSize: 11,
           fontFamily: 'Oswald_400Regular',
         },
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ color, size }) => {
           let iconName = 'circle';
 
           if (route.name === 'Deliveries') iconName = 'history';
@@ -125,7 +124,6 @@ function CourierTabsScreen() {
         name="Account"
         component={AccountScreen}
         options={{ title: 'Account' }}
-        // 👇 tells AccountScreen to behave as COURIER account page
         initialParams={{ role: 'COURIER' }}
       />
     </CourierTabs.Navigator>
@@ -136,13 +134,11 @@ function CourierTabsScreen() {
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
 
-  // Load Oswald fonts (Arial is the system default on most platforms)
   const [fontsLoaded] = useFonts({
     Oswald_400Regular,
     Oswald_700Bold,
   });
 
-  // Decide which stack screen to show first based on stored roles
   useEffect(() => {
     const bootstrap = async () => {
       try {
@@ -159,16 +155,12 @@ export default function App() {
         const hasCourier = roles.includes('COURIER');
 
         if (hasCustomer && !hasCourier) {
-          // Customer only → Customer app
           setInitialRoute('Main');
         } else if (hasCourier && !hasCustomer) {
-          // Courier only → Courier app
           setInitialRoute('CourierMain');
         } else if (hasCustomer && hasCourier) {
-          // Both → Account Selection page
           setInitialRoute('AccountSelection');
         } else {
-          // No valid account → back to login
           setInitialRoute('Login');
         }
       } catch (e) {
@@ -180,16 +172,9 @@ export default function App() {
     bootstrap();
   }, []);
 
-  // Show loading screen until fonts + initialRoute are ready
   if (!fontsLoaded || !initialRoute) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -201,23 +186,13 @@ export default function App() {
         initialRouteName={initialRoute}
         screenOptions={{ headerShown: false }}
       >
-        {/* Login screen (no footer) */}
         <RootStack.Screen name="Login" component={LoginScreen} />
-
-        {/* Account selection screen (no header / footer by design) */}
         <RootStack.Screen
           name="AccountSelection"
           component={AccountSelectionScreen}
         />
-
-        {/* Customer app root (with bottom tabs) */}
         <RootStack.Screen name="Main" component={CustomerTabsScreen} />
-
-        {/* Courier app root (with bottom tabs) */}
-        <RootStack.Screen
-          name="CourierMain"
-          component={CourierTabsScreen}
-        />
+        <RootStack.Screen name="CourierMain" component={CourierTabsScreen} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
