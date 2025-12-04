@@ -56,42 +56,60 @@ export default function LoginScreen({ navigation }) {
 
       const data = await response.json().catch(() => ({}));
 
-      // Build roles from IDs the backend returns
+      // --------------------------
+      // Build roles from IDs
+      // --------------------------
       const roles = [];
-      if (data.customer_id) {
-        roles.push('CUSTOMER');
-      }
-      if (data.courier_id) {
-        roles.push('COURIER');
-      }
+      if (data.customer_id) roles.push('CUSTOMER');
+      if (data.courier_id) roles.push('COURIER');
 
-      // Save userId for AccountScreen (/api/account/{id})
+      // --------------------------
+      // Store user_id
+      // --------------------------
       if (data.user_id) {
         await AsyncStorage.setItem('userId', String(data.user_id));
       }
 
-      // Token support (optional – if you later add JWT)
+      // --------------------------
+      // Store customer_id & courier_id
+      // --------------------------
+      if (data.customer_id) {
+        await AsyncStorage.setItem('customerId', String(data.customer_id));
+      }
+      if (data.courier_id) {
+        await AsyncStorage.setItem('courierId', String(data.courier_id));
+      }
+
+      // --------------------------
+      // Token (optional)
+      // --------------------------
       const token = data.token || data.accessToken || null;
       if (token) {
         await AsyncStorage.setItem('auth_token', token);
       }
 
-      // Save roles so AccountSelection/AccountScreen can use them
+      // --------------------------
+      // Save roles
+      // --------------------------
       await AsyncStorage.setItem('roles', JSON.stringify(roles));
 
       const hasCustomer = roles.includes('CUSTOMER');
       const hasCourier = roles.includes('COURIER');
 
-      // ✅ Scenario 1: Customer-only → Customer app
+      // --------------------------
+      // Navigation Logic
+      // --------------------------
+
+      // Customer ONLY → Customer Tabs
       if (hasCustomer && !hasCourier) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Main' }], // ✅ MUST match App.js
+          routes: [{ name: 'Main' }], // MUST match App.js
         });
         return;
       }
 
-      // ✅ Scenario 2: Courier-only → Courier app
+      // Courier ONLY → Courier Tabs
       if (hasCourier && !hasCustomer) {
         navigation.reset({
           index: 0,
@@ -100,7 +118,7 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      // ✅ Scenario 3: Both roles → Account Selection Page
+      // Both roles → choose account screen
       if (hasCustomer && hasCourier) {
         navigation.reset({
           index: 0,
@@ -109,8 +127,9 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      // ❌ Fallback: no matching customer/courier rows in DB
+      // None? → invalid login
       setError('No valid customer or courier account found for this user.');
+
     } catch (err) {
       console.log('Login error:', err);
       setError('Unable to reach server. Please try again.');
@@ -157,10 +176,10 @@ export default function LoginScreen({ navigation }) {
               onChangeText={setPassword}
             />
 
-            {/* 🔴 Inline Error (above button) */}
+            {/* Inline Error */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {/* Login Button */}
+            {/* Button */}
             <Pressable
               style={[styles.button, submitting && styles.buttonDisabled]}
               onPress={handleLogin}
