@@ -55,127 +55,68 @@ export default function LoginScreen({ navigation }) {
       }
 
       const data = await response.json().catch(() => ({}));
-      console.log('Login response data:', data);
 
-      // --------------------------
-      // Build roles from IDs
-      // --------------------------
-
-      /* 
-      The response of the fetch is an object like this: 
-
-      both@gmail.com
-      {
-        "accessToken": null,
-        "success": true,
-        "user_id": 1,
-        "customer_id": 1,
-        "courier_id": 1
-      }
-
-      customer@gmail.com
-      {
-        "accessToken": null,
-        "success": true,
-        "user_id": 2,
-        "customer_id": 2,
-        "courier_id": 0 (means that user, doesn't have any courier id)
-      }
-
-      courier@gmail.com
-      {
-        "accessToken": null,
-        "success": true,
-        "user_id": 3,
-        "customer_id": 0, (means that user, doesn't have any courier id)
-        "courier_id": 2 
-      }
-      
-      
-      THIS IS AN EXAMPLE, YOU MAY OR NOT USING IT, SO ADAPT TO YOUR NEEDS OR IGNORE IT COMPLETELY
-      --------------- LOGIC EXAMPLE -----------------
-      if (data.courier_id != 0 && data.customer != 0) {
-          means its a user with both customer and courier id
-          could do your AsyncStorage to store some data (role?? + userId + customer id + courier id)
-          after you navigate to selection
-      } else if (data.customer_id != 0 && data.courier_id == 0) {
-          means its a user as customer id
-          could do your AsyncStorage to store some data (role + userId + customer id)
-          after your navigate to customer app
-      } else {
-          means its a user as courier id
-          could do your AsyncStorage to store some data (role + userId + courier id)
-          after your navigate to courier app
-       }
-      ------------------------------------------------
-      */
-
-      
+      // ------------------------------
+      // Role + ID detection (0 = no hat, !=0 = has that role)
+      // ------------------------------
       const roles = [];
 
-      // instead of just an if, use if else if else...
-      if (data.customer_id) roles.push('customer'); // careful, its not true because customer_id coulde be 0 and 0 is a considered as a number.
-      if (data.courier_id) roles.push('courier'); // careful, its not true because courier_id coulde be 0 and 0 is a considered as a number.
+      const customerId = Number(data.customer_id ?? 0);
+      const courierId = Number(data.courier_id ?? 0);
 
-      // --------------------------
-      // Store user_id
-      // --------------------------
-      if (data.user_id) {
+      // CUSTOMER hat?
+      if (customerId !== 0) {
+        roles.push('CUSTOMER');
+        await AsyncStorage.setItem('customerId', String(customerId));
+      }
+
+      // COURIER hat?
+      if (courierId !== 0) {
+        roles.push('COURIER');
+        await AsyncStorage.setItem('courierId', String(courierId));
+      }
+
+      // Store user_id (if present)
+      if (data.user_id != null) {
         await AsyncStorage.setItem('userId', String(data.user_id));
       }
 
-      // --------------------------
-      // Store customer_id & courier_id
-      // --------------------------
-      if (data.customer_id) {
-        // here you want to store both, the role + id associated to that role.
-        await AsyncStorage.setItem('customerId', String(data.customer_id));
-      }
-      if (data.courier_id) {
-        // here you want to store both, the role + id associated to that role.
-        await AsyncStorage.setItem('courierId', String(data.courier_id));
-      }
-
-      // --------------------------
-      // Token (optional)
-      // --------------------------
+      // Optional token support
       const token = data.token || data.accessToken || null;
       if (token) {
         await AsyncStorage.setItem('auth_token', token);
       }
 
-      // --------------------------
-      // Save roles
-      // --------------------------
+      // Save roles for AccountSelection / AccountScreen
       await AsyncStorage.setItem('roles', JSON.stringify(roles));
 
-      const hascustomer = roles.includes('customer');
-      const hascourier = roles.includes('courier');
+      const hasCustomer = roles.includes('CUSTOMER');
+      const hasCourier = roles.includes('COURIER');
 
-      // --------------------------
-      // Navigation Logic
-      // --------------------------
+      // ------------------------------
+      // Navigation based on hats
+      // ------------------------------
 
-      // customer ONLY → customer Tabs
-      if (hascustomer && !hascourier) {
+      // Customer-only → Customer app
+      if (hasCustomer && !hasCourier) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'Main' }], // MUST match App.js
+          routes: [{ name: 'Main' }], // matches App.js
         });
         return;
       }
 
-      // courier ONLY → courier Tabs
-      if (hascourier && !hascustomer) {
+      // Courier-only → Courier app
+      if (hasCourier && !hasCustomer) {
         navigation.reset({
           index: 0,
-          routes: [{ name: 'courierMain' }],
+          routes: [{ name: 'CourierMain' }],
         });
         return;
       }
 
-      // Both roles → choose account screen
-      if (hascustomer && hascourier) {
+      // Both roles → account selection
+      if (hasCustomer && hasCourier) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'AccountSelection' }],
@@ -183,9 +124,8 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      // None? → invalid login
+      // No hats at all
       setError('No valid customer or courier account found for this user.');
-
     } catch (err) {
       console.log('Login error:', err);
       setError('Unable to reach server. Please try again.');
@@ -235,7 +175,7 @@ export default function LoginScreen({ navigation }) {
             {/* Inline Error */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {/* Button */}
+            {/* Login Button */}
             <Pressable
               style={[styles.button, submitting && styles.buttonDisabled]}
               onPress={handleLogin}
@@ -255,7 +195,7 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f5f5', // light gray from wireframe
   },
   container: {
     flex: 1,
@@ -310,7 +250,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   button: {
-    backgroundColor: '#D86F52',
+    backgroundColor: '#D86F52', // orange from wireframe
     height: 48,
     borderRadius: 6,
     alignItems: 'center',
