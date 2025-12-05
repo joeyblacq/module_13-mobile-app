@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AppHeader from '../components/AppHeader';
 
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
@@ -23,7 +24,7 @@ const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
  *
  * We read userId from AsyncStorage (set at login).
  */
-export default function AccountScreen({ route }) {
+export default function AccountScreen({ route, navigation }) {
   const [primaryEmail, setPrimaryEmail] = useState('');
   const [typeEmail, setTypeEmail] = useState('');
   const [typePhone, setTypePhone] = useState('');
@@ -36,7 +37,10 @@ export default function AccountScreen({ route }) {
 
   // Decide current role (Customer or Courier)
   const resolveRole = useCallback(async () => {
-    if (route?.params?.role === 'COURIER' || route?.params?.role === 'CUSTOMER') {
+    if (
+      route?.params?.role === 'COURIER' ||
+      route?.params?.role === 'CUSTOMER'
+    ) {
       setRole(route.params.role);
       return route.params.role;
     }
@@ -173,14 +177,18 @@ export default function AccountScreen({ route }) {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+      <View style={styles.screen}>
+        <AppHeader navigation={navigation} />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.screen}>
+      <AppHeader navigation={navigation} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -270,11 +278,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 6,
+    fontFamily: 'Arial',
   },
   loggedInAs: {
     fontSize: 14,
     color: '#4b5563',
     marginBottom: 20,
+    fontFamily: 'Arial',
   },
   fieldGroup: {
     marginBottom: 18,
@@ -283,6 +293,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 6,
+    fontFamily: 'Arial',
   },
   input: {
     height: 46,
@@ -292,6 +303,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#ffffff',
     fontSize: 14,
+    fontFamily: 'Arial',
   },
   readOnlyInput: {
     backgroundColor: '#f3f4f6',
@@ -300,16 +312,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
     marginTop: 4,
+    fontFamily: 'Arial',
   },
   errorText: {
     color: '#b00020',
     marginBottom: 12,
     fontSize: 13,
+    fontFamily: 'Arial',
   },
   infoText: {
     color: '#15803d',
     marginBottom: 12,
     fontSize: 13,
+    fontFamily: 'Arial',
   },
   button: {
     backgroundColor: '#D86F52',
@@ -326,5 +341,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 16,
+    fontFamily: 'Arial',
   },
 });
