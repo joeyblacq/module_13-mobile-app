@@ -8,12 +8,10 @@ import {
   StyleSheet,
   Pressable,
   Alert,
-  ScrollView,
   Image,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import OrderConfirmationModal from './OrderConfirmationModal';
-import OrderDetailModal from './OrderDetailModal';
 
 const BASE_URL = `${process.env.EXPO_PUBLIC_NGROK_URL}`;
 import MENU_HERO from '../assets/Images/RestaurantMenu.jpg';
@@ -141,7 +139,10 @@ export default function MenuScreen({ route }) {
     setConfirmOpen(true);
   };
 
-  // ✅ gets sendSMS & sendEmail from modal and includes them in POST body
+  /**
+   * Called by OrderConfirmationModal when the user presses CONFIRM ORDER.
+   * Receives notification options: { sendSMS, sendEmail }.
+   */
   const onConfirmOrder = async (options) => {
     const { sendSMS = false, sendEmail = false } = options || {};
 
@@ -154,19 +155,23 @@ export default function MenuScreen({ route }) {
         quantity: it.qty,
       }));
 
+      const payload = {
+        restaurant_id: id,
+        customer_id: 1, // TODO: replace with real logged-in customer ID if available
+        products: items,
+        sendSMS,
+        sendEmail,
+      };
+
       const res = await fetch(`${BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurant_id: id,
-          customer_id: 1,
-          products: items,
-          sendSMS,
-          sendEmail,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Order request failed');
+      if (!res.ok) {
+        throw new Error(`Order request failed with status ${res.status}`);
+      }
 
       setOrderSuccess(true);
       setConfirmOpen(false);
@@ -175,7 +180,7 @@ export default function MenuScreen({ route }) {
         'Order Created',
         `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(
           subtotal
-        )}\nText: ${sendSMS ? 'Yes' : 'No'} | Email: ${
+        )}\n\nNotifications:\n- SMS: ${sendSMS ? 'Yes' : 'No'}\n- Email: ${
           sendEmail ? 'Yes' : 'No'
         }`
       );
@@ -184,7 +189,7 @@ export default function MenuScreen({ route }) {
       Object.keys(qty).forEach((k) => (reset[k] = 0));
       setQty(reset);
     } catch (e) {
-      console.log('Order error:', e);
+      console.log('Order create error:', e);
       setOrderError('Order failed. Please try again.');
     } finally {
       setProcessing(false);
