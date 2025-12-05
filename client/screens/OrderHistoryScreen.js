@@ -9,11 +9,11 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
-  Image,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import HeaderLogo from '../assets/Images/AppLogoV1.png';
+import AppHeader from '../components/AppHeader';
+
 const formatMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 export default function OrderHistoryScreen({ navigation }) {
@@ -25,7 +25,6 @@ export default function OrderHistoryScreen({ navigation }) {
   useEffect(() => {
     const loadOrders = async () => {
       try {
-        // fake loading to simulate API
         await new Promise((r) => setTimeout(r, 350));
         setOrders([
           {
@@ -69,9 +68,7 @@ export default function OrderHistoryScreen({ navigation }) {
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem('auth_token');
-    } catch (e) {
-      // ignore storage errors
-    }
+    } catch (e) {}
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
@@ -117,31 +114,20 @@ export default function OrderHistoryScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8 }}>Loading orders...</Text>
+      <View style={styles.screen}>
+        <AppHeader navigation={navigation} />
+        <View style={styles.center}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>Loading orders...</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.screen}>
-      {/* Header with logo + logout (matches other screens) */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image
-            source={HeaderLogo}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-        </View>
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <FontAwesome name="sign-out" size={16} color="#0a65a0" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </Pressable>
-      </View>
+      <AppHeader navigation={navigation} />
 
-      {/* Content */}
       <View style={styles.content}>
         <Text style={styles.pageTitle}>My Orders</Text>
 
@@ -161,7 +147,6 @@ export default function OrderHistoryScreen({ navigation }) {
           <View style={styles.modalCard}>
             {selectedOrder && (
               <>
-                {/* Top dark header */}
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalHeaderTitle}>
                     {selectedOrder.restaurant}
@@ -171,7 +156,6 @@ export default function OrderHistoryScreen({ navigation }) {
                   </Pressable>
                 </View>
 
-                {/* Summary section */}
                 <View style={styles.modalBody}>
                   <Text style={styles.modalMeta}>
                     <Text style={styles.metaLabel}>Order Date: </Text>
@@ -190,7 +174,6 @@ export default function OrderHistoryScreen({ navigation }) {
                     {selectedOrder.courier}
                   </Text>
 
-                  {/* Items header */}
                   <View style={styles.modalListHeader}>
                     <Text style={[styles.colName, styles.bold]}>Item</Text>
                     <Text style={[styles.colQty, styles.bold]}>Qty</Text>
@@ -198,7 +181,6 @@ export default function OrderHistoryScreen({ navigation }) {
                     <Text style={[styles.colTotal, styles.bold]}>Total</Text>
                   </View>
 
-                  {/* Items */}
                   <ScrollView style={{ maxHeight: 220 }}>
                     {selectedOrder.items.map((it, idx) => (
                       <View key={idx} style={styles.modalRow}>
@@ -214,7 +196,6 @@ export default function OrderHistoryScreen({ navigation }) {
                     ))}
                   </ScrollView>
 
-                  {/* Total */}
                   <View style={styles.modalFooter}>
                     <Text style={styles.modalSubtotalLabel}>TOTAL:</Text>
                     <Text style={styles.modalSubtotalValue}>
@@ -234,55 +215,17 @@ export default function OrderHistoryScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f3f4f6', // light grey like wireframe background
+    backgroundColor: '#f3f4f6',
   },
-
-  // header (logo + logout)
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerLogo: {
-    width: 140,
-    height: 40,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#0a65a0',
-    backgroundColor: '#ffffff',
-  },
-  logoutText: {
-    marginLeft: 6,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0a65a0',
-  },
-
   content: {
     flex: 1,
   },
-
   listContent: {
     padding: 16,
     paddingBottom: 24,
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { marginTop: 8, fontFamily: 'Arial' },
 
   pageTitle: {
     fontSize: 20,
@@ -290,9 +233,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginHorizontal: 16,
     marginBottom: 6,
+    fontFamily: 'Arial',
   },
 
-  // table header row
   headerRow: {
     backgroundColor: '#111827',
     borderRadius: 10,
@@ -303,15 +246,14 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#ffffff',
     fontSize: 14,
+    fontFamily: 'Arial',
   },
 
-  // shared row base
   row: {
     flexDirection: 'row',
     alignItems: 'center',
   },
 
-  // data rows look like small cards
   dataRow: {
     paddingVertical: 12,
     paddingHorizontal: 12,
@@ -328,7 +270,7 @@ const styles = StyleSheet.create({
 
   sep: { height: 10 },
 
-  cellOrder: { flex: 2, fontWeight: '700', fontSize: 14 },
+  cellOrder: { flex: 2, fontWeight: '700', fontSize: 14, fontFamily: 'Arial' },
   cellStatus: { flex: 1, fontSize: 13 },
   cellView: {
     flex: 1,
@@ -345,26 +287,15 @@ const styles = StyleSheet.create({
         : status === 'CANCELLED'
         ? '#ef4444'
         : '#334155',
+    fontFamily: 'Arial',
   }),
 
-  viewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  iconButton: {
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#0a65a0',
-    backgroundColor: '#e6f2fa',
-    gap: 6,
-  },
-  viewBtnText: {
-    color: '#0a65a0',
-    fontWeight: '700',
-    fontSize: 13,
+    padding: 8,
+    backgroundColor: '#e5e7eb',
   },
 
-  // modal styles
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -390,6 +321,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 16,
+    fontFamily: 'Arial',
   },
   modalBody: {
     padding: 16,
@@ -397,11 +329,13 @@ const styles = StyleSheet.create({
   modalMeta: {
     marginBottom: 4,
     fontSize: 13,
+    fontFamily: 'Arial',
   },
   metaLabel: {
     fontWeight: '700',
+    fontFamily: 'Arial',
   },
-  bold: { fontWeight: '800' },
+  bold: { fontWeight: '800', fontFamily: 'Arial' },
 
   modalListHeader: {
     flexDirection: 'row',
@@ -416,10 +350,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: '#f3f4f6',
   },
-  colName: { flex: 2, fontSize: 13 },
-  colQty: { flex: 0.6, textAlign: 'center', fontSize: 13 },
-  colPrice: { flex: 0.9, textAlign: 'right', fontSize: 13 },
-  colTotal: { flex: 0.9, textAlign: 'right', fontSize: 13 },
+  colName: { flex: 2, fontSize: 13, fontFamily: 'Arial' },
+  colQty: { flex: 0.6, textAlign: 'center', fontSize: 13, fontFamily: 'Arial' },
+  colPrice: {
+    flex: 0.9,
+    textAlign: 'right',
+    fontSize: 13,
+    fontFamily: 'Arial',
+  },
+  colTotal: {
+    flex: 0.9,
+    textAlign: 'right',
+    fontSize: 13,
+    fontFamily: 'Arial',
+  },
 
   modalFooter: {
     flexDirection: 'row',
@@ -429,9 +373,11 @@ const styles = StyleSheet.create({
   modalSubtotalLabel: {
     fontWeight: '800',
     fontSize: 14,
+    fontFamily: 'Arial',
   },
   modalSubtotalValue: {
     fontWeight: '800',
     fontSize: 14,
+    fontFamily: 'Arial',
   },
 });
