@@ -11,23 +11,20 @@ import {
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import AppHeader from '../components/AppHeader';
 
-// TODO: point to your backend host:port or use EXPO_PUBLIC_NGROK_URL
-const BASE_URL = 'http://localhost:8080';
+// You can switch this to EXPO_PUBLIC_NGROK_URL if desired
+const BASE_URL = process.env.EXPO_PUBLIC_NGROK_URL || 'http://localhost:8080';
 
-// 🔹 IMPORT LOCAL IMAGES (STATIC)
+// Local images
 import cuisinePizza from '../assets/Images/Restaurants/cuisinePizza.jpg';
 import cuisineGreek from '../assets/Images/Restaurants/cuisineGreek.jpg';
 import cuisineJapanese from '../assets/Images/Restaurants/cuisineJapanese.jpg';
 import cuisineSoutheast from '../assets/Images/Restaurants/cuisineSoutheast.jpg';
 import cuisinePasta from '../assets/Images/Restaurants/cuisinePasta.jpg';
 import cuisineViet from '../assets/Images/Restaurants/cuisineViet.jpg';
-
-// 🔹 DEFAULT FALLBACK IMAGE (SITS IN assets/Images)
 import defaultRestaurantImage from '../assets/Images/RestaurantMenu.jpg';
 
-// 🔹 LOCAL IMAGE MAP
-// Keys are restaurant names without spaces, all lowercase.
 const restaurantImages = {
   rocketpizza: cuisinePizza,
   galaxyburgers: cuisineGreek,
@@ -35,13 +32,11 @@ const restaurantImages = {
   comettacos: cuisineSoutheast,
   nebulanoodles: cuisinePasta,
   vietkitchen: cuisineViet,
-  // add more mappings if you add more restaurants
 };
 
-// 🔹 NORMALIZER FUNCTION
 function normalizeRestaurant(r, index) {
   const name = r.name ?? 'Unnamed';
-  const nameKey = name.toLowerCase().replace(/\s+/g, ''); // "Rocket Pizza" → "rocketpizza"
+  const nameKey = name.toLowerCase().replace(/\s+/g, '');
 
   return {
     id: r.id ?? index + 1,
@@ -51,17 +46,14 @@ function normalizeRestaurant(r, index) {
     price_range: r.price_range ?? r.priceRange ?? null,
     active: typeof r.active === 'boolean' ? r.active : true,
     rating: r.rating ?? r.stars ?? 0,
-
-    // Local image chosen by name; fallback if not found
     image: restaurantImages[nameKey] || defaultRestaurantImage,
   };
 }
 
 export default function RestaurantsScreen({ navigation }) {
-  const [restaurants, setRestaurants] = useState(null); // null=loading
+  const [restaurants, setRestaurants] = useState(null);
   const [error, setError] = useState('');
 
-  // filters
   const [ratingFilter, setRatingFilter] = useState(null);
   const [priceFilter, setPriceFilter] = useState(null);
 
@@ -77,7 +69,6 @@ export default function RestaurantsScreen({ navigation }) {
         );
         setRestaurants(normalized);
       } catch {
-        // If API fails, use mock data but still normalize it
         const mockData = [
           {
             id: 1,
@@ -138,28 +129,31 @@ export default function RestaurantsScreen({ navigation }) {
       const okRating =
         ratingFilter == null ? true : (Number(r.rating) || 0) >= ratingFilter;
       const okPrice =
-        priceFilter == null ? true : Number(r.price_range) === Number(priceFilter);
+        priceFilter == null
+          ? true
+          : Number(r.price_range) === Number(priceFilter);
       return okRating && okPrice;
     });
   }, [restaurants, ratingFilter, priceFilter]);
 
   if (restaurants === null) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 8 }}>Loading restaurants…</Text>
+      <View style={styles.screen}>
+        <AppHeader navigation={navigation} />
+        <View style={styles.center}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>Loading restaurants…</Text>
+        </View>
       </View>
     );
   }
 
   const onOpenMenu = (item) => {
-    // Navigate to Menu screen; pass id & name
     navigation.navigate('Menu', { id: item.id, name: item.name });
   };
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      {/* Clicking the image redirects to the restaurant’s menu */}
       <Pressable
         onPress={() => onOpenMenu(item)}
         accessible
@@ -167,7 +161,7 @@ export default function RestaurantsScreen({ navigation }) {
         accessibilityLabel={`Open ${item.name} menu`}
       >
         <Image
-          source={item.image} // local or fallback image
+          source={item.image}
           style={styles.image}
           resizeMode="cover"
         />
@@ -213,10 +207,11 @@ export default function RestaurantsScreen({ navigation }) {
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.screen}>
+      <AppHeader navigation={navigation} />
+
       {error ? <Text style={styles.warn}>{error}</Text> : null}
 
-      {/* Filters row */}
       <View style={styles.filters}>
         <View style={styles.filterField}>
           <Text style={styles.filterLabel}>Rating</Text>
@@ -256,11 +251,13 @@ export default function RestaurantsScreen({ navigation }) {
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         renderItem={renderItem}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Text>No restaurants match the selected filters.</Text>
+            <Text style={styles.emptyText}>
+              No restaurants match the selected filters.
+            </Text>
           </View>
         }
       />
@@ -269,12 +266,15 @@ export default function RestaurantsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#f5f5f5' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { marginTop: 8, fontFamily: 'Arial' },
   warn: {
     color: '#8a6d3b',
     backgroundColor: '#fcf8e3',
     padding: 8,
     textAlign: 'center',
+    fontFamily: 'Arial',
   },
 
   filters: {
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   filterField: { flex: 1 },
-  filterLabel: { fontWeight: '700', marginBottom: 4 },
+  filterLabel: { fontWeight: '700', marginBottom: 4, fontFamily: 'Arial' },
   pickerWrapper: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6,
   },
-  name: { fontSize: 18, fontWeight: '700' },
+  name: { fontSize: 18, fontWeight: '700', fontFamily: 'Arial' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   badge: {
     flexDirection: 'row',
@@ -328,11 +328,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: '#f1f5f9',
   },
-  badgeText: { marginLeft: 6, fontWeight: '600' },
+  badgeText: { marginLeft: 6, fontWeight: '600', fontFamily: 'Arial' },
 
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   icon: { marginRight: 8 },
-  mono: { fontFamily: 'System' },
+  mono: { fontFamily: 'Arial' },
 
   status: {
     marginTop: 8,
@@ -345,5 +345,6 @@ const styles = StyleSheet.create({
   },
   active: { backgroundColor: '#e6f4ea' },
   inactive: { backgroundColor: '#fdecea' },
-  statusText: { marginLeft: 6, fontWeight: '600' },
+  statusText: { marginLeft: 6, fontWeight: '600', fontFamily: 'Arial' },
+  emptyText: { fontFamily: 'Arial' },
 });
