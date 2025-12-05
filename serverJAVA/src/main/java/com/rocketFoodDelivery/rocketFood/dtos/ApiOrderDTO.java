@@ -6,24 +6,42 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * DTO used by the mobile API for orders (create + read).
+ */
 @Getter
 @Setter
-//this is a class created to process the order details for the order api from postman.
 public class ApiOrderDTO {
-    int id ;
-    int customer_id;
-    String customer_name;
-    String customer_address;
-    String customer_phone;
-    int restaurant_id;
-    String restaurant_name;
-    String restaurant_address;
-    private int courier_id;
+
+    // ----- Identifiers -----
+    private int id;
+    private int customer_id;
+    private int restaurant_id;
+    private int courier_id;     // 0 if not assigned
+
+    // ----- Names / Contact info -----
+    private String customer_name;
+    private String customer_address;
+    private String customer_phone;
+
+    private String restaurant_name;
+    private String restaurant_address;
+
     private String courier_name;
-    String status;
-    List <ApiProductForOrderApiDTO> products;
-    long total_cost;
+
+    // ----- Status & timing -----
+    private String status;          // "pending", "in progress", "delivered"
     private LocalDateTime timestamp;
-    private boolean sendEmail; 
-    private boolean sendSMS; 
+
+    // ----- Products in this order -----
+    // This MUST match what OrderService uses
+    private List<ApiProductForOrderApiDTO> products;
+
+    // ----- Price -----
+    private long total_cost;        // e.g. in cents (depends on your model)
+
+    // ----- Notification options from mobile app -----
+    private boolean sendEmail;      // true = send email confirmation
+    private boolean sendSMS;        // true = send SMS confirmation
 }
+ 
