@@ -9,27 +9,60 @@ import {
   Pressable,
   Modal,
   ScrollView,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AppHeader from '../components/AppHeader';
 
 const API_BASE = process.env.EXPO_PUBLIC_NGROK_URL;
 
-const formatStatus = (status) => {
-  if (!status) return 'Unknown';
-  const s = String(status).toLowerCase();
-  if (s === 'pending') return 'Pending';
-  if (s === 'in progress') return 'In progress';
-  if (s === 'delivered') return 'Delivered';
-  return status;
+// Convert any raw status to a normalized key we use in logic
+const getStatusKey = (status) => {
+  const s = String(status || '').toLowerCase().trim();
+  if (s === 'pending') return 'pending';
+  if (s === 'in progress') return 'in progress';
+  if (s === 'delivered') return 'delivered';
+  return 'pending';
 };
 
-export default function CourierDeliveriesScreen() {
+// What we send next to the API
+const getNextStatusKey = (currentKey) => {
+  if (currentKey === 'pending') return 'in progress';
+  if (currentKey === 'in progress') return 'delivered';
+  return 'delivered';
+};
+
+// What we show on screen
+const getStatusDisplay = (key) => {
+  if (key === 'pending') return 'PENDING';
+  if (key === 'in progress') return 'IN PROGRESS';
+  if (key === 'delivered') return 'DELIVERED';
+  return key.toUpperCase();
+};
+
+// Status pill colors
+const getStatusStyles = (key) => {
+  if (key === 'pending') {
+    return { bg: '#fecaca', text: '#b91c1c', border: '#b91c1c' }; // red
+  }
+  if (key === 'in progress') {
+    return { bg: '#fed7aa', text: '#c05621', border: '#c05621' }; // orange
+  }
+  if (key === 'delivered') {
+    return { bg: '#bbf7d0', text: '#15803d', border: '#15803d' }; // green
+  }
+  return { bg: '#e5e7eb', text: '#111827', border: '#9ca3af' };
+};
+
+export default function CourierDeliveriesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [deliveries, setDeliveries] = useState([]);
   const [error, setError] = useState('');
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
 
+  // Load courier deliveries
   useEffect(() => {
     const loadDeliveries = async () => {
       setLoading(true);
@@ -51,9 +84,10 @@ export default function CourierDeliveriesScreen() {
           return;
         }
 
-        const res = await fetch(
-          `${API_BASE}/api/orders?type=courier&id=${courierId}`
-        );
+        const url = `${API_BASE}/api/orders?type=courier&id=${courierId}`;
+        console.log('Fetching courier orders from:', url);
+
+        const res = await fetch(url);
 
         // 204 No Content → no orders, not an error
         if (res.status === 204) {
@@ -105,8 +139,78 @@ export default function CourierDeliveriesScreen() {
     setDetailOpen(true);
   };
 
+  const closeDetails = () => {
+    setDetailOpen(false);
+    setSelectedOrder(null);
+  };
+
+  // 🔁 Handle status change
+  const handleStatusPress = async (order) => {
+    if (!API_BASE) {
+      Alert.alert('Error', 'Missing API base URL.');
+      return;
+    }
+
+    const currentKey = getStatusKey(order.status);
+    if (currentKey === 'delivered') {
+      return; // locked
+    }
+
+    const nextKey = getNextStatusKey(currentKey); // 'pending' → 'in progress' → 'delivered'
+    const displayNext = getStatusDisplay(nextKey);
+
+    console.log(
+      `Updating status for order ${order.id} → ${displayNext} (key: ${nextKey})`,
+    );
+
+    setUpdatingId(order.id);
+    setError('');
+
+    try {
+      const url = `${API_BASE}/api/orders/${order.id}/status`;
+      console.log('PUT URL:', url);
+
+      const payload = { status: nextKey };
+      console.log('PUT payload:', payload);
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      console.log('Status update response:', res.status, text);
+
+      if (!res.ok) {
+        throw new Error(
+          `Failed to update status. Status: ${res.status}, Body: ${text}`,
+        );
+      }
+
+      // Update local state so UI matches DB
+      setDeliveries((prev) =>
+        prev.map((d) =>
+          d.id === order.id ? { ...d, status: nextKey } : d,
+        ),
+      );
+    } catch (err) {
+      console.log('Status update failed:', err.message);
+      Alert.alert('Error', 'Failed to update status. Please try again.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const renderRow = ({ item }) => {
-    // ✅ Use customer_address as the primary delivery address
+    const statusKey = getStatusKey(item.status);
+    const display = getStatusDisplay(statusKey);
+    const { bg, text, border } = getStatusStyles(statusKey);
+    const isDelivered = statusKey === 'delivered';
+    const isBusy = updatingId === item.id;
+
     const address =
       item.customer_address ||
       item.restaurant_address ||
@@ -116,20 +220,36 @@ export default function CourierDeliveriesScreen() {
       item.destination ||
       'N/A';
 
-    const status = formatStatus(item.status);
-
     return (
       <View style={styles.row}>
+        {/* Address */}
         <View style={[styles.cell, styles.addressCell]}>
           <Text style={styles.addressText} numberOfLines={2}>
             {address}
           </Text>
         </View>
 
+        {/* Status as button */}
         <View style={[styles.cell, styles.statusCell]}>
-          <Text style={styles.statusText}>{status}</Text>
+          <Pressable
+            onPress={() => handleStatusPress(item)}
+            disabled={isDelivered || isBusy}
+            style={[
+              styles.statusPill,
+              {
+                backgroundColor: bg,
+                borderColor: border,
+                opacity: isDelivered || isBusy ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Text style={[styles.statusPillText, { color: text }]}>
+              {isBusy ? 'UPDATING…' : display}
+            </Text>
+          </Pressable>
         </View>
 
+        {/* View ID */}
         <Pressable
           style={[styles.cell, styles.viewCell]}
           onPress={() => openDetails(item)}
@@ -142,47 +262,56 @@ export default function CourierDeliveriesScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Header bar */}
-      <View style={styles.headerBar}>
-        <Text style={[styles.headerText, styles.headerAddress]}>
-          ORDER ADDRESS
-        </Text>
-        <Text style={[styles.headerText, styles.headerStatus]}>STATUS</Text>
-        <Text style={[styles.headerText, styles.headerView]}>VIEW ID</Text>
-      </View>
+      {/* Shared header with logo + logout */}
+      <AppHeader navigation={navigation} />
 
-      {/* Body */}
-      <View style={styles.body}>
-        {loading && (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" />
-          </View>
-        )}
+      {/* Content */}
+      <View style={styles.content}>
+        {/* Table header bar */}
+        <View style={styles.headerBar}>
+          <Text style={[styles.headerText, styles.headerAddress]}>
+            ORDER ADDRESS
+          </Text>
+          <Text style={[styles.headerText, styles.headerStatus]}>
+            STATUS
+          </Text>
+          <Text style={[styles.headerText, styles.headerView]}>
+            VIEW ID
+          </Text>
+        </View>
 
-        {!loading && (
-          <>
-            {error ? (
-              <Text style={styles.errorText}>{error}</Text>
-            ) : null}
+        <View style={styles.body}>
+          {loading && (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" />
+            </View>
+          )}
 
-            {deliveries.length === 0 && !error ? (
-              <View style={styles.center}>
-                <Text style={styles.emptyText}>No deliveries to display.</Text>
-              </View>
-            ) : null}
+          {!loading && (
+            <>
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {deliveries.length > 0 && (
-              <FlatList
-                data={deliveries}
-                keyExtractor={(item, index) =>
-                  String(item.id ?? index.toString())
-                }
-                renderItem={renderRow}
-                contentContainerStyle={styles.listContainer}
-              />
-            )}
-          </>
-        )}
+              {deliveries.length === 0 && !error ? (
+                <View style={styles.center}>
+                  <Text style={styles.emptyText}>
+                    No deliveries to display.
+                  </Text>
+                </View>
+              ) : null}
+
+              {deliveries.length > 0 && (
+                <FlatList
+                  data={deliveries}
+                  keyExtractor={(item, index) =>
+                    String(item.id ?? index.toString())
+                  }
+                  renderItem={renderRow}
+                  contentContainerStyle={styles.listContainer}
+                />
+              )}
+            </>
+          )}
+        </View>
       </View>
 
       {/* Details modal */}
@@ -190,7 +319,7 @@ export default function CourierDeliveriesScreen() {
         visible={detailOpen}
         transparent
         animationType="slide"
-        onRequestClose={() => setDetailOpen(false)}
+        onRequestClose={closeDetails}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -218,7 +347,9 @@ export default function CourierDeliveriesScreen() {
 
                   <Text style={styles.modalLabel}>Status</Text>
                   <Text style={styles.modalValue}>
-                    {formatStatus(selectedOrder.status)}
+                    {getStatusDisplay(
+                      getStatusKey(selectedOrder.status),
+                    )}
                   </Text>
                 </>
               ) : (
@@ -226,10 +357,7 @@ export default function CourierDeliveriesScreen() {
               )}
             </ScrollView>
 
-            <Pressable
-              style={styles.modalButton}
-              onPress={() => setDetailOpen(false)}
-            >
+            <Pressable style={styles.modalButton} onPress={closeDetails}>
               <Text style={styles.modalButtonText}>Close</Text>
             </Pressable>
           </View>
@@ -243,6 +371,9 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  content: {
+    flex: 1,
   },
   headerBar: {
     flexDirection: 'row',
@@ -306,11 +437,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#111',
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
+
+  statusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
   },
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+
   viewText: {
     fontSize: 12,
     fontWeight: '700',
