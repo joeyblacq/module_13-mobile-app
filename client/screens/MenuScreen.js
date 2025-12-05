@@ -136,13 +136,15 @@ export default function MenuScreen({ route }) {
   };
 
   const onCreateOrder = () => {
-    // 👇 only block when no items or processing; don't block on orderSuccess
     if (!hasAnyItems || processing) return;
     setOrderError('');
     setConfirmOpen(true);
   };
 
-  const onConfirmOrder = async () => {
+  // ✅ gets sendSMS & sendEmail from modal and includes them in POST body
+  const onConfirmOrder = async (options) => {
+    const { sendSMS = false, sendEmail = false } = options || {};
+
     setProcessing(true);
     setOrderError('');
 
@@ -159,12 +161,13 @@ export default function MenuScreen({ route }) {
           restaurant_id: id,
           customer_id: 1,
           products: items,
+          sendSMS,
+          sendEmail,
         }),
       });
 
       if (!res.ok) throw new Error('Order request failed');
 
-      // ✅ show success banner + close modal
       setOrderSuccess(true);
       setConfirmOpen(false);
 
@@ -172,14 +175,16 @@ export default function MenuScreen({ route }) {
         'Order Created',
         `Restaurant: ${name || id}\nItems: ${items.length}\nTotal: ${formatMoney(
           subtotal
-        )}`
+        )}\nText: ${sendSMS ? 'Yes' : 'No'} | Email: ${
+          sendEmail ? 'Yes' : 'No'
+        }`
       );
 
-      // reset quantities
       const reset = {};
       Object.keys(qty).forEach((k) => (reset[k] = 0));
       setQty(reset);
     } catch (e) {
+      console.log('Order error:', e);
       setOrderError('Order failed. Please try again.');
     } finally {
       setProcessing(false);
@@ -208,7 +213,7 @@ export default function MenuScreen({ route }) {
               (count === 0 || processing) && styles.qtyBtnDisabled,
             ]}
             onPress={() => dec(item.id)}
-            disabled={count === 0 || processing} // 🔑 removed orderSuccess
+            disabled={count === 0 || processing}
           >
             <Text
               style={[
@@ -225,7 +230,7 @@ export default function MenuScreen({ route }) {
           <Pressable
             style={[styles.qtyBtn, processing && styles.qtyBtnDisabled]}
             onPress={() => inc(item.id)}
-            disabled={processing} // 🔑 removed orderSuccess
+            disabled={processing}
           >
             <Text
               style={[
